@@ -592,7 +592,7 @@ allocate_tid (void)
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 
-/* =======================================================*/
+/* ======================================================= */
 /* Make current thread sleep for the given ticks.
    It will be called by time_sleep() interrupt handler. */
 void
@@ -603,13 +603,12 @@ make_cur_thread_sleep(int64_t sleep_tick) {
 
   old_level = intr_disable ();
 
-  printf("Disable done\n");
+  // printf("%s will be slept\n", cur->name);
 
   cur->when_to_wake_up = timer_ticks() + sleep_tick;
+  list_push_back(&sleeping_list, &cur->elem);
   thread_block();
-  printf("Blocking done\n");
-  list_push_back(&sleeping_list, cur);
-  printf("size of sleeping list: %d\n", list_size(&sleeping_list));
+  // printf("size of sleeping list: %d\n", list_size(&sleeping_list));
 
   intr_set_level (old_level);
 }
@@ -617,17 +616,26 @@ make_cur_thread_sleep(int64_t sleep_tick) {
 void
 wake_thread_up() {
   if(!list_empty(&sleeping_list)) {
-    struct list_elem *e;
+    struct list_elem *e, *temp;;
 
-    for (e = list_begin(&sleeping_list); e != list_end(&sleeping_list); e = list_next(e)) {
+    for (e = list_begin(&sleeping_list); e != list_end(&sleeping_list); ) {
       if(timer_ticks() >= list_entry(e, struct thread, elem)->when_to_wake_up) {
-        printf("Hello from %d tick\n", timer_ticks());
         /* 
         1. remove from sleeping_list
         2. call thread_unblock
         */
-        list_remove(e);
+        temp = list_remove(e);
         thread_unblock(list_entry(e, struct thread, elem));
+        
+        ASSERT(list_entry(e, struct thread, elem)->status == THREAD_READY);
+
+        e = temp;
+      }
+      else {
+        if(e == list_end(&sleeping_list)) {
+          break;
+        }
+        e = list_next(e);
       }
     }
   }
