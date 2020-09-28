@@ -77,6 +77,8 @@ test_sleep (int thread_cnt, int iterations)
   lock_init (&test.output_lock);
   test.output_pos = output;
 
+  printf("Initialize done\n");
+
   /* Start threads. */
   ASSERT (output != NULL);
   for (i = 0; i < thread_cnt; i++)
@@ -95,6 +97,8 @@ test_sleep (int thread_cnt, int iterations)
   
   /* Wait long enough for all the threads to finish. */
   timer_sleep (100 + thread_cnt * iterations * 10 + 100);
+
+  printf("All woke up!\n");
 
   /* Acquire the output lock in case some rogue thread is still
      running. */
