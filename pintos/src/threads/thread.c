@@ -207,6 +207,10 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
+  if(thread_current()->priority < t->priority) {
+    thread_yield();
+  }
+
   return tid;
 }
 
@@ -243,8 +247,8 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
-  list_push_back (&ready_list, &t->elem);
-  // list_insert_ordered
+  // list_push_back (&ready_list, &t->elem);
+  list_insert_ordered (&ready_list, &t->elem, &compare_priority, NULL);
   t->status = THREAD_READY;
   intr_set_level (old_level);
 }
@@ -315,8 +319,8 @@ thread_yield (void)
 
   old_level = intr_disable ();
   if (cur != idle_thread) 
-    list_push_back (&ready_list, &cur->elem);
-    // list_insert_ordered
+    // list_push_back (&ready_list, &cur->elem);
+    list_insert_ordered (&ready_list, &cur->elem, &compare_priority, NULL);
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -343,7 +347,13 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  thread_current ()->original_priority = new_priority;
   thread_current ()->priority = new_priority;
+  /* === */
+  if(new_priority < list_entry (list_begin(&ready_list), struct thread, elem)->priority) {
+    thread_yield();
+  }
+  /* === */
 }
 
 /* Returns the current thread's priority. */
@@ -470,6 +480,7 @@ init_thread (struct thread *t, const char *name, int priority)
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
+  t->original_priority = priority;
   t->magic = THREAD_MAGIC;
 
   old_level = intr_disable ();
@@ -626,7 +637,7 @@ wake_thread_up() {
         */
         temp = list_remove(e);
         thread_unblock(list_entry(e, struct thread, elem));
-        
+
         ASSERT(list_entry(e, struct thread, elem)->status == THREAD_READY);
 
         e = temp;
@@ -639,4 +650,16 @@ wake_thread_up() {
       }
     }
   }
+}
+
+bool compare_priority(struct list_elem *target, struct list_elem *where, void *aux) {
+  struct thread *target_thread, *thread_in_list;
+
+  target_thread = list_entry(target, struct thread, elem);
+  thread_in_list = list_entry(where, struct thread, elem);
+
+  ASSERT(is_thread(target_thread));
+  ASSERT(is_thread(thread_in_list));
+
+  return target_thread->priority > thread_in_list->priority;
 }
