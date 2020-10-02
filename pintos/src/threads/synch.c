@@ -253,7 +253,9 @@ lock_release (struct lock *lock)
     }
   }
 
-  list_remove(e);
+  if(e != list_end(&thread_current ()->owning_lock)) {
+    list_remove(e);
+  }
 
   if(!list_empty(&thread_current ()->owning_lock)) {
     for(e = list_begin(&thread_current ()->owning_lock); e != list_end(&thread_current ()->owning_lock); e = list_next(e)) {
@@ -274,6 +276,7 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
+  thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false
