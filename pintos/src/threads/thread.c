@@ -663,3 +663,7 @@ bool compare_priority(struct list_elem *target, struct list_elem *where, void *a
 
   return target_thread->priority > thread_in_list->priority;
 }
+
+struct list *get_ready_list() {
+  return &ready_list;
+}
