@@ -246,6 +246,7 @@ lock_release (struct lock *lock)
 
   struct list_elem *e;
   int max = thread_current ()->original_priority;
+  int prev_priority = thread_current ()->priority;
 
   for(e = list_begin(&thread_current ()->owning_lock); e != list_end(&thread_current ()->owning_lock); e = list_next(e)) {
     if(e == &lock->elem) {
@@ -276,7 +277,10 @@ lock_release (struct lock *lock)
 
   lock->holder = NULL;
   sema_up (&lock->semaphore);
-  thread_yield();
+  
+  if(prev_priority > thread_current ()->priority) {
+    thread_yield();
+  }
 }
 
 /* Returns true if the current thread holds LOCK, false

@@ -347,6 +347,11 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
+  if(thread_current ()->priority != thread_current ()->original_priority &&
+     thread_current ()->priority >= new_priority) {
+       thread_current ()->original_priority = new_priority;
+       return;
+     }
   thread_current ()->original_priority = new_priority;
   thread_current ()->priority = new_priority;
   /* === */
