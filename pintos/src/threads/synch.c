@@ -204,13 +204,27 @@ lock_acquire (struct lock *lock)
   ASSERT (!intr_context ());
   ASSERT (!lock_held_by_current_thread (lock));
 
+  struct lock *chain = lock;
+
+  thread_current ()->waiting_lock = lock;
+
   if(lock->semaphore.value == 0 && (lock->holder->priority < thread_current ()->priority)) {
-    lock->holder->priority = thread_current ()->priority;
+    //lock->holder->priority = thread_current ()->priority;
+    while(1) {
+      if(chain && chain->semaphore.value == 0) {
+        chain->holder->priority = thread_current ()->priority;
+        chain = chain->holder->waiting_lock;
+      }
+      else {
+        break;
+      }
+    }
     list_sort(get_ready_list(), &compare_priority, NULL);
   }
 
   sema_down (&lock->semaphore);     // sema->value becomes zero
   lock->holder = thread_current (); // lock->holder becomes current thread
+  thread_current ()->waiting_lock = NULL;
   list_push_back(&thread_current ()->owning_lock, &lock->elem);
 }
 
