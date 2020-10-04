@@ -94,6 +94,8 @@ struct thread
     int64_t when_to_wake_up;            /* Time to wake up */
     struct list owning_lock;            /* List of locks that will be possessed by this thread. */
     struct lock *waiting_lock;          /* The thread that this thread is waiting. */
+    int nice;                           /* Niceness. */
+    float recent_cpu;                   /* recent CPU. */
     /* ======================================================= */
 
     /* Shared between thread.c and synch.c. */
