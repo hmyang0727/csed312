@@ -23,6 +23,10 @@ test_mlfqs_load_1 (void)
   
   ASSERT (thread_mlfqs);
 
+  msg ("let's sleep");
+  timer_sleep(10);
+  msg ("woke up!");
+
   msg ("spinning for up to 45 seconds, please wait...");
 
   start_time = timer_ticks ();

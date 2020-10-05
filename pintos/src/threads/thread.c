@@ -199,6 +199,7 @@ thread_tick (void)
             walker->priority = PRI_MIN;
           }
         }
+        list_sort(&ready_list, &compare_priority, NULL);
       }
       if(!list_empty(&sleeping_list)) {
         for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(&sleeping_list)) {
@@ -215,10 +216,9 @@ thread_tick (void)
           }
         }
       }
-      list_sort(&ready_list, &compare_priority, NULL);
-      if(!intr_context ()) {
-        thread_yield();
-      }
+      // if(!intr_context ()) {
+      //   thread_yield();
+      // }
     }
   }
 
