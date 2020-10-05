@@ -466,15 +466,22 @@ thread_get_priority (void)
 void
 thread_set_nice (int nice UNUSED) 
 {
+  int coeff;  /* fp */
+  
+  coeff = fp_div_fp (fp_mul_int (load_avg, 2), fp_add_int (fp_mul_int (load_avg, 2), 1));
+
   thread_current ()->nice = nice;
-  thread_current ()->priority = PRI_MAX - (thread_current ()->recent_cpu / 4) - (2*thread_current ()->nice);
+  thread_current ()->recent_cpu = fp_add_int(fp_mul_fp(coeff, thread_current ()->recent_cpu), thread_current ()->nice);
+  thread_current ()->priority = PRI_MAX 
+                                - convert_fp_to_int_nearest(fp_div_int(thread_current ()->recent_cpu, 4))
+                                - 2*thread_current ()->nice;
   if(thread_current ()->priority > PRI_MAX) {
     thread_current ()->priority = PRI_MAX;
   }
   else if(thread_current ()->priority < PRI_MIN) {
     thread_current ()->priority = PRI_MIN;
   }
-  thread_yield();
+  thread_yield ();
 }
 
 /* Returns the current thread's nice value. */
