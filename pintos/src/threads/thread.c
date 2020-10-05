@@ -153,13 +153,13 @@ thread_tick (void)
         thread_current ()->recent_cpu = coeff * thread_current ()->recent_cpu + (float)thread_current ()->nice;
       }
       if(!list_empty(&ready_list)) {
-        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(&ready_list)) {
+        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(temp)) {
           walker = list_entry(temp, struct thread, elem);
           walker->recent_cpu = coeff * walker->recent_cpu + (float)walker->nice;
         }
       }
       if(!list_empty(&sleeping_list)) {
-        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(&sleeping_list)) {
+        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(temp)) {
           walker = list_entry(temp, struct thread, elem);
           walker->recent_cpu = coeff * walker->recent_cpu + (float)walker->nice;
         }
@@ -170,13 +170,13 @@ thread_tick (void)
         thread_current ()->priority = PRI_MAX - (thread_current ()->recent_cpu / 4) - (2*thread_current ()->nice);
       }
       if(!list_empty(&ready_list)) {
-        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(&ready_list)) {
+        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(temp)) {
           walker = list_entry(temp, struct thread, elem);
           walker->priority = PRI_MAX - (walker->recent_cpu / 4) - (2*walker->nice);
         }
       }
       if(!list_empty(&sleeping_list)) {
-        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(&sleeping_list)) {
+        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(temp)) {
           walker = list_entry(temp, struct thread, elem);
           walker->priority = PRI_MAX - (walker->recent_cpu / 4) - (2*walker->nice);
         }
