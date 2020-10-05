@@ -146,35 +146,29 @@ thread_tick (void)
     if(timer_ticks () % TIMER_FREQ == 0) {
       ready_threads = (thread_current () != idle_thread) ? (1 + list_size(&ready_list)) : (0 + list_size(&ready_list));
 
-      //load_avg = (59.0f/60.0f) * load_avg + (1.0f/60.0f) * (float)ready_threads;
       load_avg = fp_add_fp (fp_mul_fp (fp_div_fp (convert_int_to_fp (59), convert_int_to_fp (60)), load_avg),
                             fp_mul_fp (fp_div_fp (convert_int_to_fp (1), convert_int_to_fp (60)), convert_int_to_fp (ready_threads)));
 
-      //coeff = (2.0f*load_avg) / (2.0f*load_avg + 1.0f);
       coeff = fp_div_fp (fp_mul_int (load_avg, 2), fp_add_int (fp_mul_int (load_avg, 2), 1));
 
       if(thread_current () != idle_thread) {
-        //thread_current ()->recent_cpu = coeff * thread_current ()->recent_cpu + (float)thread_current ()->nice;
         thread_current ()->recent_cpu = fp_add_int(fp_mul_fp(coeff, thread_current ()->recent_cpu), thread_current ()->nice);
       }
       if(!list_empty(&ready_list)) {
-        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(&ready_list)) {
+        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(temp)) {
           walker = list_entry(temp, struct thread, elem);
-          //walker->recent_cpu = coeff * walker->recent_cpu + (float)walker->nice;
           walker->recent_cpu = fp_add_int(fp_mul_fp(coeff, walker->recent_cpu), walker->nice);
         }
       }
       if(!list_empty(&sleeping_list)) {
-        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(&sleeping_list)) {
+        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(temp)) {
           walker = list_entry(temp, struct thread, elem);
-          //walker->recent_cpu = coeff * walker->recent_cpu + (float)walker->nice;
           walker->recent_cpu = fp_add_int(fp_mul_fp(coeff, walker->recent_cpu), walker->nice);
         }
       }
     }
     if(timer_ticks () % 4 == 0) {
       if(thread_current () != idle_thread) {
-        //thread_current ()->priority = PRI_MAX - (thread_current ()->recent_cpu / 4) - (2*thread_current ()->nice);
         thread_current ()->priority = PRI_MAX 
                                       - convert_fp_to_int_nearest(fp_div_int(thread_current ()->recent_cpu, 4))
                                       - 2*thread_current ()->nice;
@@ -186,9 +180,8 @@ thread_tick (void)
         }
       }
       if(!list_empty(&ready_list)) {
-        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(&ready_list)) {
+        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(temp)) {
           walker = list_entry(temp, struct thread, elem);
-          //walker->priority = PRI_MAX - (walker->recent_cpu / 4) - (2*walker->nice);
           walker->priority = PRI_MAX 
                              - convert_fp_to_int_nearest(fp_div_int(walker->recent_cpu, 4))
                              - 2*walker->nice;
@@ -200,11 +193,13 @@ thread_tick (void)
           }
         }
         list_sort(&ready_list, &compare_priority, NULL);
+        if(thread_current ()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority) {
+          intr_yield_on_return ();
+        }
       }
       if(!list_empty(&sleeping_list)) {
-        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(&sleeping_list)) {
+        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(temp)) {
           walker = list_entry(temp, struct thread, elem);
-          //walker->priority = PRI_MAX - (walker->recent_cpu / 4) - (2*walker->nice);
           walker->priority = PRI_MAX 
                              - convert_fp_to_int_nearest(fp_div_int(walker->recent_cpu, 4))
                              - 2*walker->nice;
@@ -216,9 +211,6 @@ thread_tick (void)
           }
         }
       }
-      // if(!intr_context ()) {
-      //   thread_yield();
-      // }
     }
   }
 
