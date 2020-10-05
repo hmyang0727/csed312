@@ -87,15 +87,15 @@ struct thread
     enum thread_status status;          /* Thread state. */
     char name[16];                      /* Name (for debugging purposes). */
     uint8_t *stack;                     /* Saved stack pointer. */
-    int priority;                       /* Priority. */
+    int priority;                       /* Priority. (Integer) */
     struct list_elem allelem;           /* List element for all threads list. */
     /* ======================================================= */
     int original_priority;              /* Original priority. (Before get donated) */
     int64_t when_to_wake_up;            /* Time to wake up */
     struct list owning_lock;            /* List of locks that will be possessed by this thread. */
     struct lock *waiting_lock;          /* The thread that this thread is waiting. */
-    int nice;                           /* Niceness. */
-    float recent_cpu;                   /* recent CPU. */
+    int nice;                           /* Niceness. (Integer) */
+    int recent_cpu;                     /* recent CPU. (Fixed-point) */
     /* ======================================================= */
 
     /* Shared between thread.c and synch.c. */
@@ -151,6 +151,10 @@ void make_cur_thread_sleep(int64_t);
 void wake_thread_up();
 bool compare_priority(struct list_elem *, struct list_elem *, void *);
 struct list *get_ready_list();
+void increase_recent_cpu_by_one();
+void change_load_avg();
+void change_recent_cpu(struct thread *);
+void change_priority(struct thread *);
 /* ======================================================= */
 
 #endif /* threads/thread.h */

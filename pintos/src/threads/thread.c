@@ -11,6 +11,7 @@
 #include "threads/switch.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "threads/fixed-point.h"
 #include "devices/timer.h"
 #ifdef USERPROG
 #include "userprog/process.h"
@@ -33,8 +34,8 @@ static struct list all_list;
 /* List of sleeping threads. Threads in this list will be in THREAD_BLOCKED state. */
 static struct list sleeping_list;
 
-/* load_avg value. */
-static float load_avg;
+/* load_avg value. (Fixed-point) */
+static int load_avg;
 /* =======================================================*/
 
 /* Idle thread. */
@@ -120,6 +121,8 @@ thread_start (void)
   sema_init (&idle_started, 0);
   thread_create ("idle", PRI_MIN, idle, &idle_started);
 
+  load_avg = 0;
+
   /* Start preemptive thread scheduling. */
   intr_enable ();
 
@@ -135,54 +138,49 @@ thread_tick (void)
   struct thread *walker, *t = thread_current ();
   struct list_elem *temp;
   int ready_threads;
-  float coeff;
   
   /* If MLFQS mode is on. */
   if(thread_mlfqs) {
-    if(thread_current () != idle_thread) {
-      thread_current ()->recent_cpu += 1.0f;
-    }
+    increase_recent_cpu_by_one ();
     if(timer_ticks () % TIMER_FREQ == 0) {
-      ready_threads = (thread_current () != idle_thread) ? (1 + list_size(&ready_list)) : (0 + list_size(&ready_list));
+      change_load_avg ();
 
-      load_avg = (59.0f/60.0f) * load_avg + (1.0f/60.0f) * (float)ready_threads;
-
-      coeff = (2.0f*load_avg) / (2.0f*load_avg + 1.0f);
-
-      if(thread_current () != idle_thread) {
-        thread_current ()->recent_cpu = coeff * thread_current ()->recent_cpu + (float)thread_current ()->nice;
-      }
-      if(!list_empty(&ready_list)) {
-        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(temp)) {
-          walker = list_entry(temp, struct thread, elem);
-          walker->recent_cpu = coeff * walker->recent_cpu + (float)walker->nice;
-        }
-      }
-      if(!list_empty(&sleeping_list)) {
-        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(temp)) {
-          walker = list_entry(temp, struct thread, elem);
-          walker->recent_cpu = coeff * walker->recent_cpu + (float)walker->nice;
-        }
-      }
+      // if(thread_current () != idle_thread) {
+      //   thread_current ()->recent_cpu = coeff * thread_current ()->recent_cpu + (float)thread_current ()->nice;
+      // }
+      // if(!list_empty(&ready_list)) {
+      //   for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(temp)) {
+      //     walker = list_entry(temp, struct thread, elem);
+      //     walker->recent_cpu = coeff * walker->recent_cpu + (float)walker->nice;
+      //   }
+      // }
+      // if(!list_empty(&sleeping_list)) {
+      //   for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(temp)) {
+      //     walker = list_entry(temp, struct thread, elem);
+      //     walker->recent_cpu = coeff * walker->recent_cpu + (float)walker->nice;
+      //   }
+      // }
+      thread_foreach (&change_recent_cpu, NULL);
     }
     if(timer_ticks () % 4 == 0) {
-      if(thread_current () != idle_thread) {
-        thread_current ()->priority = PRI_MAX - (thread_current ()->recent_cpu / 4) - (2*thread_current ()->nice);
-      }
-      if(!list_empty(&ready_list)) {
-        for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(temp)) {
-          walker = list_entry(temp, struct thread, elem);
-          walker->priority = PRI_MAX - (walker->recent_cpu / 4) - (2*walker->nice);
-        }
-      }
-      if(!list_empty(&sleeping_list)) {
-        for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(temp)) {
-          walker = list_entry(temp, struct thread, elem);
-          walker->priority = PRI_MAX - (walker->recent_cpu / 4) - (2*walker->nice);
-        }
-      }
+      // if(thread_current () != idle_thread) {
+      //   thread_current ()->priority = PRI_MAX - (thread_current ()->recent_cpu / 4) - (2*thread_current ()->nice);
+      // }
+      // if(!list_empty(&ready_list)) {
+      //   for(temp = list_front(&ready_list); temp != list_end(&ready_list); temp = list_next(temp)) {
+      //     walker = list_entry(temp, struct thread, elem);
+      //     walker->priority = PRI_MAX - (walker->recent_cpu / 4) - (2*walker->nice);
+      //   }
+      // }
+      // if(!list_empty(&sleeping_list)) {
+      //   for(temp = list_front(&sleeping_list); temp != list_end(&sleeping_list); temp = list_next(temp)) {
+      //     walker = list_entry(temp, struct thread, elem);
+      //     walker->priority = PRI_MAX - (walker->recent_cpu / 4) - (2*walker->nice);
+      //   }
+      // }
+      thread_foreach (&change_priority, NULL);
       list_sort(&ready_list, &compare_priority, NULL);
-      thread_yield();
+      intr_yield_on_return ();
     }
   }
 
@@ -439,7 +437,7 @@ void
 thread_set_nice (int nice UNUSED) 
 {
   thread_current ()->nice = nice;
-  thread_current ()->priority = PRI_MAX - (thread_current ()->recent_cpu / 4) - (2*thread_current ()->nice);
+  change_priority (thread_current ());
   thread_yield();
 }
 
@@ -454,19 +452,14 @@ thread_get_nice (void)
 int
 thread_get_load_avg (void) 
 {
-  return (int)(100.0f*load_avg + 0.5f);
+  return convert_fp_to_int_nearest (fp_mul_int (load_avg, 100));
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
 int
 thread_get_recent_cpu (void) 
 {
-  if(thread_current ()->recent_cpu < 0.0f) {
-    return (int)(100.0f*thread_current ()->recent_cpu - 0.5f);
-  }
-  else {
-    return (int)(100.0f*thread_current ()->recent_cpu + 0.5f);
-  }
+  return convert_fp_to_int_nearest (fp_mul_int (thread_current ()->recent_cpu, 100));
 }
 
 /* Idle thread.  Executes when no other thread is ready to run.
@@ -745,4 +738,33 @@ bool compare_priority(struct list_elem *target, struct list_elem *where, void *a
 
 struct list *get_ready_list() {
   return &ready_list;
+}
+
+void increase_recent_cpu_by_one() {
+  if(thread_current () != idle_thread) {
+    thread_current ()->recent_cpu += convert_int_to_fp(1);
+  }
+}
+
+void change_load_avg() {
+  int ready_threads;
+
+  ready_threads = (thread_current () != idle_thread) ? (1 + list_size(&ready_list)) : (0 + list_size(&ready_list));
+
+  load_avg = fp_add_fp (fp_mul_fp (fp_div_int (convert_int_to_fp (59), 60), load_avg),
+                        fp_mul_fp (fp_div_int (convert_int_to_fp (1), 60), convert_int_to_fp (ready_threads)));
+}
+
+void change_recent_cpu(struct thread *t) {
+  int coeff;  /* Fixed-point */
+
+  coeff  = fp_div_fp (fp_mul_int (load_avg, 2), fp_add_int (fp_mul_int (load_avg, 2), 1));
+
+  t->recent_cpu = fp_add_int (fp_mul_fp (coeff, t->recent_cpu), t->nice);
+}
+
+void change_priority(struct thread *t) {
+  t->priority = PRI_MAX
+                - convert_fp_to_int_nearest (fp_div_int (t->recent_cpu, 4))
+                - (t->nice) * 2;
 }
