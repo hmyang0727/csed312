@@ -148,7 +148,7 @@ thread_tick (void)
     }
     if(timer_ticks () % 4 == 0) {
       thread_foreach (&change_priority, NULL);
-      list_sort(&ready_list, &compare_priority, NULL);
+      list_sort (&ready_list, &compare_priority, NULL);
       intr_yield_on_return ();
     }
   }
@@ -230,8 +230,8 @@ thread_create (const char *name, int priority,
   /* Add to run queue. */
   thread_unblock (t);
 
-  if(thread_current()->priority < t->priority) {
-    thread_yield();
+  if(thread_current ()->priority < t->priority) {
+    thread_yield ();
   }
 
   return tid;
@@ -372,22 +372,21 @@ thread_foreach (thread_action_func *func, void *aux)
 void
 thread_set_priority (int new_priority) 
 {
-  struct thread *front_ready = list_entry (list_begin(&ready_list), struct thread, elem);
+  struct thread *front_ready = list_entry (list_begin (&ready_list), struct thread, elem);
 
-  ASSERT(!thread_mlfqs);
+  ASSERT (!thread_mlfqs);
 
-  if(thread_current ()->priority != thread_current ()->original_priority &&  // is donated?
+  if (thread_current ()->priority != thread_current ()->original_priority &&  // is donated?
      thread_current ()->priority >= new_priority) {
        thread_current ()->original_priority = new_priority;
        return;
      }
   thread_current ()->original_priority = new_priority;
   thread_current ()->priority = new_priority;
-  /* === */
-  if(new_priority < front_ready->priority) {
-    thread_yield();
+
+  if (new_priority < front_ready->priority) {
+    thread_yield ();
   }
-  /* === */
 }
 
 /* Returns the current thread's priority. */
@@ -404,7 +403,7 @@ thread_set_nice (int nice UNUSED)
   thread_current ()->nice = nice;
   change_recent_cpu (thread_current ());
   change_priority (thread_current ());
-  thread_yield();
+  thread_yield ();
 }
 
 /* Returns the current thread's nice value. */
@@ -645,80 +644,81 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 /* Make current thread sleep for the given ticks.
    It will be called by time_sleep() interrupt handler. */
 void
-make_cur_thread_sleep(int64_t sleep_tick) {
-  struct thread *cur = thread_current();
+make_cur_thread_sleep (int64_t sleep_tick) {
+  struct thread *cur = thread_current ();
 
   enum intr_level old_level;
 
   old_level = intr_disable ();
 
-  cur->when_to_wake_up = timer_ticks() + sleep_tick;
-  list_push_back(&sleeping_list, &cur->elem);
-  thread_block();
+  cur->when_to_wake_up = timer_ticks () + sleep_tick;
+  list_push_back (&sleeping_list, &cur->elem);
+  thread_block ();
 
   intr_set_level (old_level);
 }
 
 void
-wake_thread_up() {
-  if(!list_empty(&sleeping_list)) {
+wake_thread_up () {
+  if(!list_empty (&sleeping_list)) {
     struct list_elem *e, *temp;;
 
-    for (e = list_begin(&sleeping_list); e != list_end(&sleeping_list); ) {
-      if(timer_ticks() >= list_entry(e, struct thread, elem)->when_to_wake_up) {
-        temp = list_remove(e);
-        thread_unblock(list_entry(e, struct thread, elem));
+    for (e = list_begin (&sleeping_list); e != list_end (&sleeping_list); ) {
+      if(timer_ticks () >= list_entry (e, struct thread, elem)->when_to_wake_up) {
+        temp = list_remove (e);
+        thread_unblock (list_entry (e, struct thread, elem));
 
-        ASSERT(list_entry(e, struct thread, elem)->status == THREAD_READY);
+        ASSERT (list_entry (e, struct thread, elem)->status == THREAD_READY);
 
         e = temp;
       }
       else {
-        if(e == list_end(&sleeping_list)) {
+        if(e == list_end (&sleeping_list)) {
           break;
         }
-        e = list_next(e);
+        e = list_next (e);
       }
     }
   }
 }
 
 bool
-compare_priority(struct list_elem *target, struct list_elem *where, void *aux) {
+compare_priority (struct list_elem *target, struct list_elem *where, void *aux) {
   struct thread *target_thread, *thread_in_list;
 
-  target_thread = list_entry(target, struct thread, elem);
-  thread_in_list = list_entry(where, struct thread, elem);
+  target_thread = list_entry (target, struct thread, elem);
+  thread_in_list = list_entry (where, struct thread, elem);
 
-  ASSERT(is_thread(target_thread));
-  ASSERT(is_thread(thread_in_list));
+  ASSERT (is_thread (target_thread));
+  ASSERT (is_thread (thread_in_list));
 
   return target_thread->priority > thread_in_list->priority;
 }
 
-struct list *get_ready_list() {
+struct list *
+get_ready_list () {
   return &ready_list;
 }
 
 void
-increase_recent_cpu_by_one() {
+increase_recent_cpu_by_one () {
   if(thread_current () != idle_thread) {
     thread_current ()->recent_cpu += convert_int_to_fp(1);
   }
 }
 
 void
-change_load_avg() {
+change_load_avg () {
   int ready_threads;
 
-  ready_threads = (thread_current () != idle_thread) ? (1 + list_size(&ready_list)) : (0 + list_size(&ready_list));
+  ready_threads = (thread_current () != idle_thread) ? (1 + list_size (&ready_list)) : (0 + list_size (&ready_list));
 
   load_avg = fp_add_fp (fp_mul_fp (fp_div_int (convert_int_to_fp (59), 60), load_avg),
                         fp_mul_fp (fp_div_int (convert_int_to_fp (1), 60), convert_int_to_fp (ready_threads)));
 }
 
 void
-change_recent_cpu(struct thread *t) {
+change_recent_cpu (struct thread *t) {
   int coeff;  /* Fixed-point */
 
   coeff  = fp_div_fp (fp_mul_int (load_avg, 2), fp_add_int (fp_mul_int (load_avg, 2), 1));
@@ -727,7 +727,7 @@ change_recent_cpu(struct thread *t) {
 }
 
 void
-change_priority(struct thread *t) {
+change_priority (struct thread *t) {
   t->priority = PRI_MAX
                 - convert_fp_to_int_nearest (fp_div_int (t->recent_cpu, 4))
                 - (t->nice) * 2;

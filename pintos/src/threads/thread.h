@@ -147,14 +147,14 @@ int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
 /* ======================================================= */
-void make_cur_thread_sleep(int64_t);
-void wake_thread_up();
-bool compare_priority(struct list_elem *, struct list_elem *, void *);
-struct list *get_ready_list();
-void increase_recent_cpu_by_one();
-void change_load_avg();
-void change_recent_cpu(struct thread *);
-void change_priority(struct thread *);
+void make_cur_thread_sleep (int64_t);
+void wake_thread_up ();
+bool compare_priority (struct list_elem *, struct list_elem *, void *);
+struct list *get_ready_list ();
+void increase_recent_cpu_by_one ();
+void change_load_avg ();
+void change_recent_cpu (struct thread *);
+void change_priority (struct thread *);
 /* ======================================================= */
 
 #endif /* threads/thread.h */
