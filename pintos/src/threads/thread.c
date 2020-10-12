@@ -664,16 +664,20 @@ wake_thread_up () {
     struct list_elem *e, *temp;;
 
     for (e = list_begin (&sleeping_list); e != list_end (&sleeping_list); ) {
-      if(timer_ticks () >= list_entry (e, struct thread, elem)->when_to_wake_up) {
+      if (timer_ticks () >= list_entry (e, struct thread, elem)->when_to_wake_up) {
         temp = list_remove (e);
         thread_unblock (list_entry (e, struct thread, elem));
+
+        if (list_entry (e, struct thread, elem)->priority > thread_current ()->priority) {
+          intr_yield_on_return ();
+        }
 
         ASSERT (list_entry (e, struct thread, elem)->status == THREAD_READY);
 
         e = temp;
       }
       else {
-        if(e == list_end (&sleeping_list)) {
+        if (e == list_end (&sleeping_list)) {
           break;
         }
         e = list_next (e);
