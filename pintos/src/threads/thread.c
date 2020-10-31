@@ -1,3 +1,7 @@
+#ifndef USERPROG
+#define USERPROG
+#endif
+
 #include "threads/thread.h"
 #include <debug.h>
 #include <stddef.h>
@@ -13,6 +17,7 @@
 #include "threads/vaddr.h"
 #include "threads/fixed-point.h"
 #include "devices/timer.h"
+
 #ifdef USERPROG
 #include "userprog/process.h"
 #endif

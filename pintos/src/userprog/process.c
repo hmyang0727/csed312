@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -29,6 +30,8 @@ tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
+  char *t_name;
+  char *remainder;
   tid_t tid;
 
   /* Make a copy of FILE_NAME.
@@ -38,8 +41,11 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  /* Get thread name. */
+  t_name = strtok_r (file_name, " ", &remainder);
+
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (t_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
@@ -53,18 +59,27 @@ start_process (void *file_name_)
   char *file_name = file_name_;
   struct intr_frame if_;
   bool success;
+  char *f_name;
+  char *remainder;
+
+  /* Parse program name for load function. */
+  f_name = strtok_r (file_name, " ", &remainder);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  // success = load (file_name, &if_.eip, &if_.esp);
+  success = load (f_name, &if_.eip, &if_.esp);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+  
+  /* Put arguments into the user stack. */
+  push_stack_argument (&if_.esp, f_name, remainder);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -462,4 +477,14 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+void
+push_stack_argument(void **esp, char *file_name, char *remainder)
+{
+  int argc = 1;  /* Consider file_name. */
+  char *remainder_cpy = malloc(sizeof(char) * (strlen(remainder) + 1));
+  strlcpy (remainder_cpy, remainder, strlen(remainder) + 1);
+
+  
 }
