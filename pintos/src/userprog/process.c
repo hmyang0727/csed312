@@ -65,6 +65,8 @@ start_process (void *file_name_)
   /* Parse program name for load function. */
   f_name = strtok_r (file_name, " ", &remainder);
 
+  printf("f_name: %s\n", f_name);
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -80,6 +82,8 @@ start_process (void *file_name_)
   
   /* Put arguments into the user stack. */
   push_stack_argument (&if_.esp, f_name, remainder);
+
+  hex_dump (if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -483,8 +487,74 @@ void
 push_stack_argument(void **esp, char *file_name, char *remainder)
 {
   int argc = 1;  /* Consider file_name. */
-  char *remainder_cpy = malloc(sizeof(char) * (strlen(remainder) + 1));
+  int i, j, len, word_align = 0, k;
+  int* argv_addr;
+  char *remainder_cpy = malloc (sizeof (char) * (strlen (remainder) + 1)), *token;
+  char delimeter[] = " ";
+  char **save_ptr;
+  char **argv;
+
   strlcpy (remainder_cpy, remainder, strlen(remainder) + 1);
 
-  
+  token = strtok_r (remainder_cpy, delimeter, &save_ptr);
+  while (token != NULL) {
+    argc++;
+    token = strtok_r (NULL, delimeter, &save_ptr);
+  }
+
+  argv = (char**)malloc (sizeof(char*) * argc);
+  argv_addr = (int*)malloc (sizeof(int) * argc);
+
+  /* argv[0] */
+  len = strlen(file_name) + 1;
+  argv[0] = (char*)malloc (sizeof(char) * len);
+  strlcpy (argv[0], file_name, len);
+
+  /* argv[1], ... , argv[n - 1] */
+  token = strtok_r (remainder, delimeter, &save_ptr);
+  for (i = 1; i < argc; i++) {
+    len = strlen(token) + 1;
+    argv[i] = (char*)malloc (sizeof(char) * len);
+    strlcpy (argv[i], token, len);
+    token = strtok_r (NULL, delimeter, &save_ptr);
+  }
+
+  /* Push arguments. */
+  for (i = argc - 1; i >= 0; i--) {
+    for (j = strlen (argv[i]); j >= 0; j--) {
+      (*esp) -= 1;
+      **(char **)esp = argv[i][j];
+    }
+    argv_addr[i] = (*esp);
+
+    /* Word alignment. */
+    if ((strlen (argv[i]) + 1) % 4 != 0) {
+      word_align = 4 - ((strlen (argv[i]) + 1) % 4);
+      for (k = 0; k < word_align; k++) {
+        (*esp) -= 1;
+        **(char **)esp = 0;
+      }
+    }
+  }
+
+  (*esp) -= 4;
+  memset (*esp, 0, 4);
+
+  /* Push address of argvs. */
+  for(i = argc - 1; i >= 0; i--) {
+    (*esp) -= sizeof(int);
+    **(int **)esp = argv_addr[i];
+  }
+
+  /* Push argv. */
+  (*esp) -= sizeof(int);
+  **(int **)esp = (*esp) + sizeof(int);
+
+  /* Push argc. */
+  (*esp) -= sizeof(int);
+  **(int **)esp = argc;
+
+  /* Push fake address. */
+  (*esp) -= 4;
+  **(int **)esp = 0;
 }
