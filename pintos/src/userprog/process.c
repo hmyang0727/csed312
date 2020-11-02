@@ -34,6 +34,9 @@ process_execute (const char *file_name)
   char *remainder;
   tid_t tid;
 
+  t_name = malloc (sizeof(char) * (strlen(file_name) + 1));
+  strlcpy (t_name, file_name, strlen(file_name) + 1);
+
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
@@ -42,12 +45,21 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   /* Get thread name. */
-  t_name = strtok_r (file_name, " ", &remainder);
+  t_name = strtok_r (t_name, " ", &remainder);
+
+  printf("t_name: %s\n", t_name);
 
   /* Create a new thread to execute FILE_NAME. */
+  printf("Creating a thread...\n");
   tid = thread_create (t_name, PRI_DEFAULT, start_process, fn_copy);
-  if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+  printf("Thread creation completed\n");
+  if (tid == TID_ERROR) {
+    printf("TID ERROR!\n");
+    palloc_free_page (fn_copy);
+  }
+  
+  free(t_name);
+
   return tid;
 }
 
@@ -62,8 +74,12 @@ start_process (void *file_name_)
   char *f_name;
   char *remainder;
 
+  printf("hello from start_process\n");
+
   /* Parse program name for load function. */
-  f_name = strtok_r (file_name, " ", &remainder);
+  f_name = malloc (sizeof (char) * (strlen (file_name) + 1));
+  strlcpy (f_name, file_name, strlen (file_name) + 1);
+  f_name = strtok_r (f_name, " ", &remainder);
 
   printf("f_name: %s\n", f_name);
 
@@ -75,16 +91,18 @@ start_process (void *file_name_)
   // success = load (file_name, &if_.eip, &if_.esp);
   success = load (f_name, &if_.eip, &if_.esp);
 
+  /* Put arguments into the user stack. */
+  if (success) {
+    printf("hi\n");
+    push_stack_argument (&if_.esp, f_name, remainder);
+    hex_dump (if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+  }
+
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
   
-  /* Put arguments into the user stack. */
-  push_stack_argument (&if_.esp, f_name, remainder);
-
-  hex_dump (if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
-
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -105,8 +123,10 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
+  int i;
+  for(i = 0; i < 1000000000; i++);
   return -1;
 }
 
@@ -487,7 +507,7 @@ void
 push_stack_argument(void **esp, char *file_name, char *remainder)
 {
   int argc = 1;  /* Consider file_name. */
-  int i, j, len, word_align = 0, k;
+  int i, j, len, word_align = 0, k, total_argv_len = 0;
   int* argv_addr;
   char *remainder_cpy = malloc (sizeof (char) * (strlen (remainder) + 1)), *token;
   char delimeter[] = " ";
@@ -524,17 +544,22 @@ push_stack_argument(void **esp, char *file_name, char *remainder)
     for (j = strlen (argv[i]); j >= 0; j--) {
       (*esp) -= 1;
       **(char **)esp = argv[i][j];
+      total_argv_len += 1;
     }
     argv_addr[i] = (*esp);
 
-    /* Word alignment. */
-    if ((strlen (argv[i]) + 1) % 4 != 0) {
-      word_align = 4 - ((strlen (argv[i]) + 1) % 4);
-      for (k = 0; k < word_align; k++) {
-        (*esp) -= 1;
-        **(char **)esp = 0;
-      }
-    }
+    // /* Word alignment. */
+    // if ((strlen (argv[i]) + 1) % 4 != 0) {
+    //   word_align = 4 - ((strlen (argv[i]) + 1) % 4);
+    //   for (k = 0; k < word_align; k++) {
+    //     (*esp) -= 1;
+    //     **(char **)esp = 0;
+    //   }
+    // }
+  }
+
+  if(total_argv_len % 4) {
+    (*esp) -= 4 - (total_argv_len % 4);
   }
 
   (*esp) -= 4;
