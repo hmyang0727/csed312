@@ -3,8 +3,10 @@
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "devices/shutdown.h"
 
 static void syscall_handler (struct intr_frame *);
+void halt (void);
 void exit (int status);
 int write (int fd, const void *buffer, unsigned size);
 
@@ -28,6 +30,7 @@ syscall_handler (struct intr_frame *f UNUSED)
 
   switch(syscall_number) {
     case SYS_HALT:
+      halt ();
       break;
     case SYS_EXIT:
       exit (*(unsigned int*)(esp + 4));
@@ -60,8 +63,12 @@ syscall_handler (struct intr_frame *f UNUSED)
   // thread_exit ();
 }
 
+void halt () {
+  shutdown_power_off ();
+}
+
 void exit (int status) {
-  printf ("%s: exit(%d)\n", thread_name (), status);
+  printf ("%s: exit(%d)\n", thread_current ()->name, status);
   thread_exit ();
 }
 
