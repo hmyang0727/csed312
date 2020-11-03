@@ -93,7 +93,6 @@ start_process (void *file_name_)
 
   /* Put arguments into the user stack. */
   if (success) {
-    printf("hi\n");
     push_stack_argument (&if_.esp, f_name, remainder);
     hex_dump (if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   }
@@ -547,17 +546,9 @@ push_stack_argument(void **esp, char *file_name, char *remainder)
       total_argv_len += 1;
     }
     argv_addr[i] = (*esp);
-
-    // /* Word alignment. */
-    // if ((strlen (argv[i]) + 1) % 4 != 0) {
-    //   word_align = 4 - ((strlen (argv[i]) + 1) % 4);
-    //   for (k = 0; k < word_align; k++) {
-    //     (*esp) -= 1;
-    //     **(char **)esp = 0;
-    //   }
-    // }
   }
 
+  /* Word alignment. */
   if(total_argv_len % 4) {
     (*esp) -= 4 - (total_argv_len % 4);
   }
