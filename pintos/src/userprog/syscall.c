@@ -5,12 +5,13 @@
 #include "threads/thread.h"
 #include "threads/synch.h"
 #include "threads/vaddr.h"
+#include "filesys/filesys.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 
 static void syscall_handler (struct intr_frame *);
+void is_user_space (void *addr);
 void halt (void);
-void exit (int status);
 pid_t exec (const char *cmd_line);
 int wait (pid_t pid);
 bool create (const char *file, unsigned initial_size);
@@ -46,9 +47,11 @@ syscall_handler (struct intr_frame *f UNUSED)
       halt ();
       break;
     case SYS_EXIT:
+      is_user_space (esp + 4);
       exit (*(unsigned int*)(esp + 4));
       break;
     case SYS_EXEC:
+      is_user_space (esp + 4);
       exec ((char*)*(unsigned int*)(esp + 4));
       break;
     case SYS_WAIT:
@@ -64,6 +67,7 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_READ:
       break;
     case SYS_WRITE:
+      is_user_space (esp + 12); 
       write ((int)*(unsigned int*)(esp + 4), (void*)*(unsigned int*)(esp + 8), (unsigned)*(unsigned int*)(esp + 12));
       break;
     case SYS_SEEK:
@@ -77,10 +81,21 @@ syscall_handler (struct intr_frame *f UNUSED)
   // thread_exit ();
 }
 
+/* Check whether the given pointer is pointing the user space or not.
+   If not, terminate the process. */
+void is_user_space (void *addr) {
+  if(!is_user_vaddr (addr)) {
+    exit(-1);
+  }
+}
+
+/* Terminate Pintos by calling shutdown_power_off (). */
 void halt () {
   shutdown_power_off ();
 }
 
+/* Terminate the current user process with an exit message.
+   Exit status will be returned to the kernel. */
 void exit (int status) {
   printf ("%s: exit(%d)\n", thread_current ()->name, status);
   thread_exit ();
