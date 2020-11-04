@@ -57,8 +57,14 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_WAIT:
       break;
     case SYS_CREATE:
+      is_user_space (esp + 8);
+      is_user_space ((void*)*(unsigned int*)(esp + 4));
+      f->eax = create ((char*)*(unsigned int*)(esp + 4), (unsigned)*(unsigned int*)(esp + 8));
       break;
     case SYS_REMOVE:
+      is_user_space (esp + 4);
+      is_user_space ((void*)*(unsigned int*)(esp + 4));
+      f->eax = remove ((char*)*(unsigned int*)(esp + 4));
       break;
     case SYS_OPEN:
       break;
@@ -67,8 +73,10 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_READ:
       break;
     case SYS_WRITE:
-      is_user_space (esp + 12); 
-      write ((int)*(unsigned int*)(esp + 4), (void*)*(unsigned int*)(esp + 8), (unsigned)*(unsigned int*)(esp + 12));
+      is_user_space (esp + 12);
+      is_user_space ((void*)*(unsigned int*)(esp + 8));
+      is_user_space ((void*)*(unsigned int*)(esp + 8) + *(unsigned int*)(esp + 12));
+      f->eax = write ((int)*(unsigned int*)(esp + 4), (void*)*(unsigned int*)(esp + 8), (unsigned)*(unsigned int*)(esp + 12));
       break;
     case SYS_SEEK:
       break;
@@ -110,11 +118,11 @@ int wait (pid_t pid) {
 }
 
 bool create (const char *file, unsigned initial_size) {
-
+  return filesys_create (file, initial_size);
 }
 
 bool remove (const char *file) {
-
+  return filesys_remove (file);
 }
 
 int open (const char *file) {
