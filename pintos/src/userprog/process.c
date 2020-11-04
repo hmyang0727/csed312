@@ -47,14 +47,14 @@ process_execute (const char *file_name)
   /* Get thread name. */
   t_name = strtok_r (t_name, " ", &remainder);
 
-  printf("t_name: %s\n", t_name);
+  // printf("t_name: %s\n", t_name);
 
   /* Create a new thread to execute FILE_NAME. */
-  printf("Creating a thread...\n");
+  // printf("Creating a thread...\n");
   tid = thread_create (t_name, PRI_DEFAULT, start_process, fn_copy);
-  printf("Thread creation completed\n");
+  // printf("Thread creation completed\n");
   if (tid == TID_ERROR) {
-    printf("TID ERROR!\n");
+    // printf("TID ERROR!\n");
     palloc_free_page (fn_copy);
   }
   
@@ -74,14 +74,14 @@ start_process (void *file_name_)
   char *f_name;
   char *remainder;
 
-  printf("hello from start_process\n");
+  // printf("hello from start_process\n");
 
   /* Parse program name for load function. */
   f_name = malloc (sizeof (char) * (strlen (file_name) + 1));
   strlcpy (f_name, file_name, strlen (file_name) + 1);
   f_name = strtok_r (f_name, " ", &remainder);
 
-  printf("f_name: %s\n", f_name);
+  // printf("f_name: %s\n", f_name);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -94,7 +94,7 @@ start_process (void *file_name_)
   /* Put arguments into the user stack. */
   if (success) {
     push_stack_argument (&if_.esp, f_name, remainder);
-    hex_dump (if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+    // hex_dump (if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   }
 
   /* If load failed, quit. */
