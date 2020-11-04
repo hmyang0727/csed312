@@ -107,6 +107,9 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
+    struct list child_list;             /* List of child processes. */
+    struct list_elem child_elem_list;   /* List of elements of child processes. */
+    struct thread *parent;              /* Parent process. If it does not have a parent, NULL. */
 #endif
 
     /* Owned by thread.c. */
