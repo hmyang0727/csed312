@@ -33,6 +33,7 @@ process_execute (const char *file_name)
   char *t_name;
   char *remainder;
   tid_t tid;
+  struct file *file = NULL;
 
   t_name = malloc (sizeof(char) * (strlen(file_name) + 1));
   strlcpy (t_name, file_name, strlen(file_name) + 1);
@@ -47,14 +48,9 @@ process_execute (const char *file_name)
   /* Get thread name. */
   t_name = strtok_r (t_name, " ", &remainder);
 
-  // printf("t_name: %s\n", t_name);
-
   /* Create a new thread to execute FILE_NAME. */
-  // printf("Creating a thread...\n");
   tid = thread_create (t_name, PRI_DEFAULT, start_process, fn_copy);
-  // printf("Thread creation completed\n");
   if (tid == TID_ERROR) {
-    // printf("TID ERROR!\n");
     palloc_free_page (fn_copy);
   }
   
@@ -91,6 +87,8 @@ start_process (void *file_name_)
   // success = load (file_name, &if_.eip, &if_.esp);
   success = load (f_name, &if_.eip, &if_.esp);
 
+  sema_up (&thread_current ()->load_sema);
+
   /* Put arguments into the user stack. */
   if (success) {
     push_stack_argument (&if_.esp, f_name, remainder);
@@ -99,9 +97,9 @@ start_process (void *file_name_)
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
+  if (!success) {
     thread_exit ();
-  
+  }
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
@@ -124,8 +122,16 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid) 
 {
-  int i;
-  for(i = 0; i < 1000000000; i++);
+  struct thread *wait_thread;
+  struct list_elem *e;
+
+  for(e = list_begin (&thread_current ()->child_list); e != list_end (&thread_current ()->child_list); e = list_next (e)) {
+    wait_thread = list_entry (e, struct thread, child_elem);
+    if(wait_thread->tid == child_tid) {
+      sema_down (&wait_thread->exit_sema);
+      return wait_thread->exit_status;
+    }
+  }
   return -1;
 }
 
@@ -135,6 +141,8 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+
+  sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */

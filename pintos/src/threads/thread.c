@@ -211,6 +211,14 @@ thread_create (const char *name, int priority,
   sf = alloc_frame (t, sizeof *sf);
   sf->eip = switch_entry;
   sf->ebp = 0;
+
+  #ifdef USERPROG
+  list_push_back (&thread_current ()->child_list, &t->child_elem);
+  t->parent = thread_current ();
+  sema_init (&t->load_sema, 0);
+  sema_init (&t->exit_sema, 0);
+  #endif
+  
   /* Add to run queue. */
   thread_unblock (t);
   if(!list_empty(&ready_list)){
@@ -218,10 +226,6 @@ thread_create (const char *name, int priority,
       thread_yield(); 
     }
   }
-
-  #ifdef USERPROG
-
-  #endif
 
   return tid;
 }
@@ -619,6 +623,10 @@ init_thread (struct thread *t, const char *name, int priority)
   t->original_priority = priority;
   list_init(&t->donor_thread_list);
   t->magic = THREAD_MAGIC;
+
+  #ifdef USERPROG
+  list_init (&t->child_list);
+  #endif
 
   old_level = intr_disable ();
   list_push_back (&all_list, &t->allelem);
