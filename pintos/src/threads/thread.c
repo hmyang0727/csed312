@@ -217,6 +217,7 @@ thread_create (const char *name, int priority,
   t->parent = thread_current ();
   sema_init (&t->load_sema, 0);
   sema_init (&t->exit_sema, 0);
+  sema_init (&t->file_sema, 1);
   #endif
   
   /* Add to run queue. */

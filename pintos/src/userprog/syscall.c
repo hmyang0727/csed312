@@ -121,6 +121,8 @@ pid_t exec (const char *cmd_line) {
 
   exec_tid = process_execute (cmd_line);
 
+  if(exec_tid == -1) { return -1; } ///////////////////////////////
+
   for (e = list_begin (&thread_current ()->child_list); e != list_end (&thread_current ()->child_list); e = list_next (e)) {
     exec_thread = list_entry (e, struct thread, child_elem);
     if(exec_thread->tid == exec_tid) {
@@ -164,7 +166,9 @@ int read (int fd, void *buffer, unsigned size) {
 
 int write (int fd, const void *buffer, unsigned size) {
   if (fd == 1) {
+    sema_down(&thread_current()->file_sema);
     putbuf (buffer, size);
+    sema_up(&thread_current()->file_sema);
     return size;
   }
   return -1;

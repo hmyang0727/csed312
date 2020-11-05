@@ -48,6 +48,11 @@ process_execute (const char *file_name)
   /* Get thread name. */
   t_name = strtok_r (t_name, " ", &remainder);
 
+  file = filesys_open(file_name); /////////////////////////////////////////////////////////////////
+  if(file == NULL) {
+    return TID_ERROR;
+  }
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (t_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR) {
