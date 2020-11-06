@@ -25,6 +25,7 @@ typedef int tid_t;
 #define PRI_MIN 0                       /* Lowest priority. */
 #define PRI_DEFAULT 31                  /* Default priority. */
 #define PRI_MAX 63                      /* Highest priority. */
+#define MAX_FD 128                      /* Limit of the number of open files per process. */
 
 /* A kernel thread or user process.
 
@@ -118,6 +119,8 @@ struct thread
     struct semaphore exit_sema;         /* Semaphore for exit. */
     struct semaphore remove_sema;       /* Semaphore for removing thread. */
     struct semaphore file_sema;
+    struct file** fd;                   /* File descriptors. */
+    int next_fd;                        /* File descriptor number for next allocation. */
 #endif
 
     /* Owned by thread.c. */

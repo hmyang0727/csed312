@@ -64,6 +64,9 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = remove ((char*)*(unsigned int*)(esp + 4));
       break;
     case SYS_OPEN:
+      is_user_space (esp + 4);
+      is_user_space ((void*)*(unsigned int*)(esp + 4));
+      f->eax = open ((char*)*(unsigned int*)(esp + 4));
       break;
     case SYS_FILESIZE:
       break;
@@ -148,7 +151,16 @@ bool remove (const char *file) {
 }
 
 int open (const char *file) {
-
+  if (file == NULL) {
+    return -1;
+  }
+  struct file *open_file = filesys_open (file);
+  if (open_file == NULL) {
+    return -1;
+  }
+  thread_current ()->fd[thread_current ()->next_fd] = open_file;
+  thread_current ()->next_fd++;
+  return ((thread_current ()->next_fd) - 1);
 }
 
 int filesize (int fd) {
@@ -161,9 +173,9 @@ int read (int fd, void *buffer, unsigned size) {
 
 int write (int fd, const void *buffer, unsigned size) {
   if (fd == 1) {
-    sema_down(&thread_current()->file_sema);
+    sema_down (&thread_current ()->file_sema);
     putbuf (buffer, size);
-    sema_up(&thread_current()->file_sema);
+    sema_up (&thread_current ()->file_sema);
     return size;
   }
   return -1;

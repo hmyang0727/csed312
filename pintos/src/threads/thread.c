@@ -12,8 +12,10 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "threads/float_arithematic.h"
+#include "filesys/file.h"
 #ifdef USERPROG
 #include "userprog/process.h"
+#include "threads/malloc.h"
 #endif
 
 /* Random value for struct thread's `magic' member.
@@ -32,7 +34,6 @@ static int load_avg;
    when they are first scheduled and removed when they exit. */
 static struct list all_list;
 struct list *pall_list = &all_list;
-
 
 /* Idle thread. */
 static struct thread *idle_thread;
@@ -186,6 +187,9 @@ thread_create (const char *name, int priority,
   struct switch_entry_frame *ef;
   struct switch_threads_frame *sf;
   tid_t tid;
+  #ifdef USERPROG
+  int i;
+  #endif
 
   ASSERT (function != NULL);
   /* Allocate thread. */
@@ -219,6 +223,11 @@ thread_create (const char *name, int priority,
   sema_init (&t->exit_sema, 0);
   sema_init (&t->remove_sema, 0);
   sema_init (&t->file_sema, 1);
+  t->fd = (struct file**)malloc (sizeof (struct file*) * MAX_FD);
+  for (i = 0; i < MAX_FD; i++) {
+    t->fd[i] = NULL;
+  }
+  t->next_fd = 2;
   #endif
   
   /* Add to run queue. */
