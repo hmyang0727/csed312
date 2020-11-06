@@ -58,6 +58,8 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = exec ((char*)*(unsigned int*)(esp + 4));
       break;
     case SYS_WAIT:
+      is_user_space (esp + 4);
+      f->eax = wait ((int)*(unsigned int*)(esp + 4));
       break;
     case SYS_CREATE:
       is_user_space (esp + 8);
@@ -135,7 +137,7 @@ pid_t exec (const char *cmd_line) {
 }
 
 int wait (pid_t pid) {
-
+  return process_wait (pid);
 }
 
 bool create (const char *file, unsigned initial_size) {

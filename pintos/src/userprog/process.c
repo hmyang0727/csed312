@@ -130,12 +130,17 @@ process_wait (tid_t child_tid)
 {
   struct thread *wait_thread;
   struct list_elem *e;
+  int retval;
 
   for(e = list_begin (&thread_current ()->child_list); e != list_end (&thread_current ()->child_list); e = list_next (e)) {
     wait_thread = list_entry (e, struct thread, child_elem);
     if(wait_thread->tid == child_tid) {
       sema_down (&wait_thread->exit_sema);
-      return wait_thread->exit_status;
+      retval = wait_thread->exit_status;
+      wait_thread->parent = NULL;
+      list_remove (&wait_thread->child_elem);
+      sema_up (&wait_thread->remove_sema);
+      return retval;
     }
   }
   return -1;
@@ -147,8 +152,6 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-
-  sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -166,6 +169,9 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+
+  sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
+  sema_down (&cur->remove_sema);
 }
 
 /* Sets up the CPU for running user code in the current

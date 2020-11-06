@@ -115,6 +115,7 @@ struct thread
     struct thread *parent;              /* Parent process. If it does not have a parent, NULL. */
     struct semaphore load_sema;         /* Semaphore for load. */
     struct semaphore exit_sema;         /* Semaphore for exit. */
+    struct semaphore remove_sema;       /* Semaphore for removing thread. */
     struct semaphore file_sema;
 #endif
 
