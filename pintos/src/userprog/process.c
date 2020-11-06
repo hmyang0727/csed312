@@ -48,12 +48,6 @@ process_execute (const char *file_name)
   /* Get thread name. */
   t_name = strtok_r (t_name, " ", &remainder);
 
-  file = filesys_open(t_name); /////////////////////////////////////////////////////////////////
-  if(file == NULL) {
-    return TID_ERROR;
-  }
-  file_close (file);
-
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (t_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR) {
@@ -76,34 +70,30 @@ start_process (void *file_name_)
   char *f_name;
   char *remainder;
 
-  // printf("hello from start_process\n");
-
   /* Parse program name for load function. */
   f_name = malloc (sizeof (char) * (strlen (file_name) + 1));
   strlcpy (f_name, file_name, strlen (file_name) + 1);
   f_name = strtok_r (f_name, " ", &remainder);
-
-  // printf("f_name: %s\n", f_name);
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  // success = load (file_name, &if_.eip, &if_.esp);
   success = load (f_name, &if_.eip, &if_.esp);
-
-  sema_up (&thread_current ()->load_sema);
 
   /* Put arguments into the user stack. */
   if (success) {
+    thread_current ()->load_success = true;
+    sema_up (&thread_current ()->load_sema);
     push_stack_argument (&if_.esp, f_name, remainder);
-    // hex_dump (if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
   }
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) {
+    thread_current ()->load_success = false;
+    sema_up (&thread_current ()->load_sema);
     thread_exit ();
   }
   /* Start the user process by simulating a return from an
@@ -153,6 +143,8 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -170,7 +162,6 @@ process_exit (void)
       pagedir_destroy (pd);
     }
 
-  sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
   sema_down (&cur->remove_sema);
 }
 

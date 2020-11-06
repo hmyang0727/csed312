@@ -110,6 +110,7 @@ struct thread
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
     int exit_status;                    /* Exit status of this process. */
+    bool load_success;                  /* TRUE if load is successful, FALSE otherwise. */
     struct list child_list;             /* List of child processes. */
     struct list_elem child_elem;        /* Child element. */
     struct thread *parent;              /* Parent process. If it does not have a parent, NULL. */

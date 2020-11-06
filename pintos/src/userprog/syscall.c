@@ -36,14 +36,6 @@ syscall_handler (struct intr_frame *f UNUSED)
   void* esp = f->esp;
   int syscall_number = *(unsigned int*)esp;
 
-  // hex_dump (esp, esp, 400, 1);
-
-  // printf("Syscall Number: %d\n", syscall_number);
-  // printf("ESP: %p\n", esp);
-  // printf("Next: %p\n", esp + 4);
-
-  // hex_dump (esp, esp, 400, 1);
-
   switch(syscall_number) {
     case SYS_HALT:
       halt ();
@@ -90,8 +82,6 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_CLOSE:
       break;
   }
-  // printf ("system call!\n");
-  // thread_exit ();
 }
 
 /* Check whether the given pointer is pointing the user space or not.
@@ -123,13 +113,16 @@ pid_t exec (const char *cmd_line) {
 
   exec_tid = process_execute (cmd_line);
 
-  if(exec_tid == -1) { return -1; } ///////////////////////////////
-
   for (e = list_begin (&thread_current ()->child_list); e != list_end (&thread_current ()->child_list); e = list_next (e)) {
     exec_thread = list_entry (e, struct thread, child_elem);
     if(exec_thread->tid == exec_tid) {
       sema_down (&exec_thread->load_sema);
-      return exec_tid;
+      if (exec_thread->load_success) {
+        return exec_tid;
+      }
+      else {
+        return -1;
+      }
     }
   }
 
