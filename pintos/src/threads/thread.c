@@ -222,7 +222,7 @@ thread_create (const char *name, int priority,
   sema_init (&t->load_sema, 0);
   sema_init (&t->exit_sema, 0);
   sema_init (&t->remove_sema, 0);
-  sema_init (&t->file_sema, 1);
+  // sema_init (&t->file_sema, 1);
   t->fd = (struct file**)malloc (sizeof (struct file*) * MAX_FD);
   for (i = 0; i < MAX_FD; i++) {
     t->fd[i] = NULL;

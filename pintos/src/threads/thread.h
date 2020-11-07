@@ -118,7 +118,6 @@ struct thread
     struct semaphore load_sema;         /* Semaphore for load. */
     struct semaphore exit_sema;         /* Semaphore for exit. */
     struct semaphore remove_sema;       /* Semaphore for removing thread. */
-    struct semaphore file_sema;
     struct file** fd;                   /* File descriptors. */
     int next_fd;                        /* File descriptor number for next allocation. */
 #endif

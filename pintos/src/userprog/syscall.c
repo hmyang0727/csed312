@@ -1,4 +1,5 @@
 #include "devices/shutdown.h"
+#include "devices/input.h"
 #include "userprog/syscall.h"
 #include "userprog/process.h"
 #include "threads/interrupt.h"
@@ -6,6 +7,7 @@
 #include "threads/synch.h"
 #include "threads/vaddr.h"
 #include "filesys/filesys.h"
+#include "filesys/file.h"
 #include <stdio.h>
 #include <syscall-nr.h>
 
@@ -28,6 +30,7 @@ void
 syscall_init (void) 
 {
   intr_register_int (0x30, 3, INTR_ON, syscall_handler, "syscall");
+  lock_init (&file_access_lock);
 }
 
 static void
@@ -69,8 +72,14 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = open ((char*)*(unsigned int*)(esp + 4));
       break;
     case SYS_FILESIZE:
+      is_user_space (esp + 4);
+      f->eax = filesize ((int)*(unsigned int*)(esp + 4));
       break;
     case SYS_READ:
+      is_user_space (esp + 12);
+      is_user_space ((void*)*(unsigned int*)(esp + 8));
+      is_user_space ((void*)*(unsigned int*)(esp + 8) + *(unsigned int*)(esp + 12));
+      f->eax = read ((int)*(unsigned int*)(esp + 4), (void*)*(unsigned int*)(esp + 8), (unsigned)*(unsigned int*)(esp + 12));
       break;
     case SYS_WRITE:
       is_user_space (esp + 12);
@@ -164,20 +173,44 @@ int open (const char *file) {
 }
 
 int filesize (int fd) {
+  if (thread_current ()->fd[fd] == NULL) {
+    return -1;
+  }
 
+  return file_length (thread_current ()->fd[fd]);
 }
 
 int read (int fd, void *buffer, unsigned size) {
+  int i, retval;
+  lock_acquire (&file_access_lock);
+  /* Standard input. */
+  if (fd == 0) {
+    for (i = 0; i < size; i++) {
+      *((uint8_t*)buffer + i) = input_getc ();
+    }
+    lock_release (&file_access_lock);
+    return size;
+  }
 
+  if (thread_current ()->fd[fd] == NULL) {
+    lock_release (&file_access_lock);
+    return -1;
+  }
+
+  retval = file_read (thread_current ()->fd[fd], buffer, size);
+  lock_release (&file_access_lock);
+  return retval;
 }
 
 int write (int fd, const void *buffer, unsigned size) {
+  lock_acquire (&file_access_lock);
+  /* Standard output. */
   if (fd == 1) {
-    sema_down (&thread_current ()->file_sema);
     putbuf (buffer, size);
-    sema_up (&thread_current ()->file_sema);
+    lock_release (&file_access_lock);
     return size;
   }
+  lock_release (&file_access_lock);
   return -1;
 }
 
