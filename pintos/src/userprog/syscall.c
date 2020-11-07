@@ -88,10 +88,16 @@ syscall_handler (struct intr_frame *f UNUSED)
       f->eax = write ((int)*(unsigned int*)(esp + 4), (void*)*(unsigned int*)(esp + 8), (unsigned)*(unsigned int*)(esp + 12));
       break;
     case SYS_SEEK:
+      is_user_space ((void*)*(unsigned int*)(esp + 8));
+      seek ((int)*(unsigned int*)(esp + 4), (unsigned int)*(unsigned int*)(esp + 8));
       break;
     case SYS_TELL:
+      is_user_space ((void*)*(unsigned int*)(esp + 4));
+      f->eax = tell ((int)*(unsigned int*)(esp + 4));
       break;
     case SYS_CLOSE:
+      is_user_space ((void*)*(unsigned int*)(esp + 4));
+      close ((int)*(unsigned int*)(esp + 4));
       break;
   }
 }
@@ -223,13 +229,39 @@ int write (int fd, const void *buffer, unsigned size) {
 }
 
 void seek (int fd, unsigned position) {
+  lock_acquire (&file_access_lock);
+  if (thread_current ()->fd[fd] == NULL) {
+    lock_release (&file_access_lock);
+    return;
+  }
 
+  file_seek (thread_current ()->fd[fd], position);
+  lock_release (&file_access_lock);
+  return;
 }
 
 unsigned tell (int fd) {
+  int retval;
+  lock_acquire (&file_access_lock);
+  if (thread_current ()->fd[fd] == NULL) {
+    lock_release (&file_access_lock);
+    return -1;
+  }
 
+  retval = file_tell (thread_current ()->fd[fd]);
+  lock_release (&file_access_lock);
+  return retval;
 }
 
 void close (int fd) {
+  lock_acquire (&file_access_lock);
+  if (thread_current ()->fd[fd] == NULL) {
+    lock_release (&file_access_lock);
+    return;
+  }
 
+  file_close (thread_current ()->fd[fd]);
+  thread_current ()->fd[fd] = NULL;
+  lock_release (&file_access_lock);
+  return;
 }
