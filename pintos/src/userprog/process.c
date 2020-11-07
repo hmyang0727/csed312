@@ -87,6 +87,7 @@ start_process (void *file_name_)
     thread_current ()->load_success = true;
     sema_up (&thread_current ()->load_sema);
     push_stack_argument (&if_.esp, f_name, remainder);
+    free (f_name);
   }
 
   /* If load failed, quit. */
@@ -94,6 +95,7 @@ start_process (void *file_name_)
   if (!success) {
     thread_current ()->load_success = false;
     sema_up (&thread_current ()->load_sema);
+    free (f_name);
     thread_exit ();
   }
   /* Start the user process by simulating a return from an
@@ -142,6 +144,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
+  int i;
 
   sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
 
@@ -161,6 +164,12 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  
+  for (i = 2; i < MAX_FD; i++) {
+    if (cur->fd[i] != NULL) {
+      file_close (cur->fd[i]);
+    }
+  }
 
   sema_down (&cur->remove_sema);
 }
@@ -584,4 +593,11 @@ push_stack_argument(void **esp, char *file_name, char *remainder)
   /* Push fake address. */
   (*esp) -= 4;
   **(int **)esp = 0;
+
+  free (remainder_cpy);
+  free (argv_addr);
+  for (i = 0; i < argc; i++) {
+    free (argv[i]);
+  }
+  free (argv);
 }
