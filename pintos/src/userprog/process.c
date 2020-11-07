@@ -144,7 +144,7 @@ process_exit (void)
 {
   struct thread *cur = thread_current ();
   uint32_t *pd;
-  int i;
+  int i; 
 
   sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
 
