@@ -150,8 +150,9 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-   /* Unexpected interrupt in kernel. */
-  if(!user) {
+  if(!user || /* Unexpected interrupt in kernel. */
+     not_present || /* Not presenting page */
+     (user && is_kernel_vaddr (fault_addr))) { /* User is accessing kernel space. */
      exit (-1);
   }
 
