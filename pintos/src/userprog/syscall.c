@@ -203,6 +203,7 @@ int read (int fd, void *buffer, unsigned size) {
 }
 
 int write (int fd, const void *buffer, unsigned size) {
+  int retval;
   lock_acquire (&file_access_lock);
   /* Standard output. */
   if (fd == 1) {
@@ -210,8 +211,15 @@ int write (int fd, const void *buffer, unsigned size) {
     lock_release (&file_access_lock);
     return size;
   }
+
+  if (thread_current ()->fd[fd] == NULL) {
+    lock_release (&file_access_lock);
+    return -1;
+  }
+
+  retval = file_write (thread_current ()->fd[fd], buffer, size);
   lock_release (&file_access_lock);
-  return -1;
+  return retval;
 }
 
 void seek (int fd, unsigned position) {
