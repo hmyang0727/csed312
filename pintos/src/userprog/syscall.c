@@ -173,6 +173,12 @@ int open (const char *file) {
   if (open_file == NULL) {
     return -1;
   }
+
+  /* If file is running, opening file is not allowed. */
+  if (!strcmp(thread_current()->name, file)) {
+    file_deny_write(open_file);
+  }
+
   thread_current ()->fd[thread_current ()->next_fd] = open_file;
   thread_current ()->next_fd++;
   return ((thread_current ()->next_fd) - 1);
