@@ -135,12 +135,8 @@ pid_t exec (const char *cmd_line) {
     exec_thread = list_entry (e, struct thread, child_elem);
     if(exec_thread->tid == exec_tid) {
       sema_down (&exec_thread->load_sema);
-      if (exec_thread->load_success) {
-        return exec_tid;
-      }
-      else {
-        return -1;
-      }
+      
+      return exec_thread->load_success ? exec_tid : -1;
     }
   }
 

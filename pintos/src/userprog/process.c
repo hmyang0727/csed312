@@ -146,7 +146,6 @@ process_exit (void)
   uint32_t *pd;
   int i; 
 
-  sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
 
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
@@ -171,6 +170,7 @@ process_exit (void)
     }
   }
 
+  sema_up (&cur->exit_sema);  /////////////////////////////////////////////////////////////////////////////
   sema_down (&cur->remove_sema);
 }
 
