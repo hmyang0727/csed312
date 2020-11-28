@@ -55,6 +55,7 @@ void free_frame_entry (void* kpage) {
         target_fte = list_entry (e, struct frame_table_entry, elem);
         if (target_fte->kpage == kpage) {
             list_remove (e);
+            free (target_fte);
             break;
         }
     }
