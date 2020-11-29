@@ -2,6 +2,7 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "userprog/pagedir.h"
 #include "vm/page.h"
 #include "vm/frame.h"
 
@@ -73,7 +74,8 @@ bool load_file_page (struct supplemental_page_table_entry* spte) {
     memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
 
     /* Add the page to the process's address space. */
-    if (!install_page(spte->upage, kpage, spte->writable))
+    if (!(pagedir_get_page(thread_current ()->pagedir, spte->upage) == NULL 
+          && pagedir_set_page(thread_current ()->pagedir, spte->upage, kpage, spte->writable)))
     {
         free_frame_entry (kpage);
         return false;
