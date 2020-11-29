@@ -4,6 +4,7 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
+#include "vm/page.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -114,6 +115,11 @@ struct thread
     struct list fdt;           /* List of file descriptor entries. */
     int next_fd;               /* File descriptor for next file. */
     struct file *running_file; /* Currently running file. */
+#endif
+
+#ifdef VM
+   struct hash supplemental_page_table;
+   struct lock supplemental_page_table_lock;
 #endif
 
     /* Owned by thread.c. */

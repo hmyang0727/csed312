@@ -649,12 +649,18 @@ init_thread(struct thread *t, const char *name, int priority)
                             : thread_current()->recent_cpu;
         update_priority(t, NULL);
     }
+
 #ifdef USERPROG
     t->pcb = NULL;
     list_init(&t->children);
     list_init(&t->fdt);
     t->next_fd = 2;
 #endif
+
+#ifdef VM
+    spt_init (t->supplemental_page_table, t->supplemental_page_table_lock);
+#endif
+
     t->magic = THREAD_MAGIC;
 
     old_level = intr_disable();

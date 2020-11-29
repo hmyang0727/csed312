@@ -29,6 +29,8 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
     void* frame;
     struct frame_table_entry* fte = malloc(sizeof(struct frame_table_entry) * 1);
 
+    ASSERT (fte != NULL);
+
     frame = palloc_get_page (flags);
     if(!frame) {
         free (fte);
