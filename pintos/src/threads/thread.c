@@ -658,7 +658,7 @@ init_thread(struct thread *t, const char *name, int priority)
 #endif
 
 #ifdef VM
-    spt_init (t->supplemental_page_table, t->supplemental_page_table_lock);
+    spt_init (&t->supplemental_page_table, &t->supplemental_page_table_lock);
 #endif
 
     t->magic = THREAD_MAGIC;

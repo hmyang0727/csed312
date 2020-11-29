@@ -129,6 +129,7 @@ page_fault(struct intr_frame *f)
     void *fault_addr; /* Fault address. */
     struct supplemental_page_table_entry* spte, hash_finder;
     struct hash_elem* found_elem;
+    struct thread* t = thread_current ();
 
     /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
@@ -162,7 +163,7 @@ page_fault(struct intr_frame *f)
     }
 
     hash_finder.upage = pg_round_down (fault_addr);
-    found_elem = hash_find (&thread_current ()->supplemental_page_table, &hash_finder.elem);
+    found_elem = hash_find (&t->supplemental_page_table, &hash_finder.elem);
     spte = found_elem ? hash_entry (found_elem, struct supplemental_page_table_entry, elem) : NULL;
 
     if(!spte) {

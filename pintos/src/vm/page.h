@@ -23,8 +23,13 @@ struct supplemental_page_table_entry {
     struct hash_elem elem;
 };
 
-void spt_init ();
+/* Initialize supplemental page table and its lock. */
+void spt_init (struct hash*, struct lock*);
+
+/* Insert supplemental page table entry. */
 bool insert_unmapped_spte (struct file*, off_t, void*, uint32_t, uint32_t, bool);
+
+/* Load file page that has not been loaded. */
 bool load_file_page (struct supplemental_page_table_entry*);
 
 #endif

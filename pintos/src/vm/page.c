@@ -30,8 +30,9 @@ void spt_init (struct hash* supplemental_page_table, struct lock* supplemental_p
 
 bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
     struct supplemental_page_table_entry* spte;
-
-    spte = malloc(sizeof(struct supplemental_page_table_entry));
+    struct thread* t = thread_current ();
+    
+    spte = malloc (sizeof (struct supplemental_page_table_entry));
 
     ASSERT (spte != NULL);
 
@@ -46,10 +47,13 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, uint32_t r
     spte->is_dirty = false;
     spte->is_accessed = false;
 
-    if(!hash_insert (&thread_current ()->supplemental_page_table, &spte->elem)) {
+    lock_acquire (&t->supplemental_page_table_lock);
+    if(!hash_insert (&t->supplemental_page_table, &spte->elem)) {
+        lock_release (&t->supplemental_page_table_lock);
         return true;
     }
     else {
+        lock_release (&t->supplemental_page_table_lock);
         free (spte);
         return false;
     }
@@ -57,6 +61,7 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, uint32_t r
 
 bool load_file_page (struct supplemental_page_table_entry* spte) {
     uint8_t *kpage;
+    struct thread* t = thread_current ();
 
     file_seek(spte->file, spte->ofs);
 
@@ -74,8 +79,8 @@ bool load_file_page (struct supplemental_page_table_entry* spte) {
     memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
 
     /* Add the page to the process's address space. */
-    if (!(pagedir_get_page(thread_current ()->pagedir, spte->upage) == NULL 
-          && pagedir_set_page(thread_current ()->pagedir, spte->upage, kpage, spte->writable)))
+    if (!(pagedir_get_page(t->pagedir, spte->upage) == NULL 
+          && pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable)))
     {
         free_frame_entry (kpage);
         return false;
