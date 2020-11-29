@@ -172,6 +172,7 @@ page_fault(struct intr_frame *f)
 
     if (spte->status == 0) {
         load_file_page (spte);
+        return;
     }
     else {
         syscall_exit (-1);

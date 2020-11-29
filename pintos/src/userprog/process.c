@@ -549,7 +549,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
         //     return false;
         // }                                               Yayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy!
 
-        if (!insert_unmapped_spte (file, ofs, upage, page_read_bytes, page_zero_bytes, writable)) {
+        if (!insert_unmapped_spte (file, ofs, upage, NULL, page_read_bytes, page_zero_bytes, writable)) {
             return false;
         }
 
@@ -599,7 +599,8 @@ install_page(void *upage, void *kpage, bool writable)
 
     /* Verify that there's not already a page at that virtual
      address, then map our page there. */
-    return (pagedir_get_page(t->pagedir, upage) == NULL && pagedir_set_page(t->pagedir, upage, kpage, writable));
+    return (pagedir_get_page(t->pagedir, upage) == NULL 
+           && pagedir_set_page(t->pagedir, upage, kpage, writable));
 }
 
 /* Parses LINE by spaces and set ARGC and ARGV. */

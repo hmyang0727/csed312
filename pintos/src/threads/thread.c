@@ -110,6 +110,7 @@ void thread_init(void)
     initial_thread = running_thread();
     init_thread(initial_thread, "main", PRI_DEFAULT);
     initial_thread->status = THREAD_RUNNING;
+
     initial_thread->tid = allocate_tid();
 }
 
@@ -230,6 +231,10 @@ tid_t thread_create(const char *name, int priority,
     sf = alloc_frame(t, sizeof *sf);
     sf->eip = switch_entry;
     sf->ebp = 0;
+
+#ifdef VM
+    spt_init (&t->supplemental_page_table, &t->supplemental_page_table_lock);
+#endif
 
     /* Add to run queue. */
     thread_unblock(t);
@@ -655,10 +660,6 @@ init_thread(struct thread *t, const char *name, int priority)
     list_init(&t->children);
     list_init(&t->fdt);
     t->next_fd = 2;
-#endif
-
-#ifdef VM
-    spt_init (&t->supplemental_page_table, &t->supplemental_page_table_lock);
 #endif
 
     t->magic = THREAD_MAGIC;

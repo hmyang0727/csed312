@@ -28,10 +28,10 @@ void spt_init (struct hash* supplemental_page_table, struct lock* supplemental_p
     lock_init (supplemental_page_table_lock);
 }
 
-bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
+bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
     struct supplemental_page_table_entry* spte;
     struct thread* t = thread_current ();
-    
+
     spte = malloc (sizeof (struct supplemental_page_table_entry));
 
     ASSERT (spte != NULL);
@@ -40,7 +40,7 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, uint32_t r
     spte->file = file;
     spte->ofs = ofs;
     spte->upage = upage;
-    spte->kpage = NULL;
+    spte->kpage = kpage;
     spte->read_bytes = read_bytes;
     spte->zero_bytes = zero_bytes;
     spte->writable = writable;
