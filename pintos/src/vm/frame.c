@@ -27,7 +27,9 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
     // int is_user = flags & PAL_USER;
     // int is_zero = flags & PAL_ZERO;
     void* frame;
-    struct frame_table_entry* fte = malloc(sizeof(struct frame_table_entry) * 1);
+    struct frame_table_entry* fte;
+
+    fte = malloc(sizeof(struct frame_table_entry));
 
     ASSERT (fte != NULL);
 

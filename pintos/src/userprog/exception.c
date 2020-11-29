@@ -1,10 +1,12 @@
 #include "userprog/exception.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include "threads/vaddr.h"
 #include "userprog/gdt.h"
 #include "userprog/syscall.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -125,6 +127,8 @@ page_fault(struct intr_frame *f)
     bool write;       /* True: access was write, false: access was read. */
     bool user;        /* True: access by user, false: access by kernel. */
     void *fault_addr; /* Fault address. */
+    struct supplemental_page_table_entry* spte, hash_finder;
+    struct hash_elem* found_elem;
 
     /* Obtain faulting address, the virtual address that was
      accessed to cause the fault.  It may point to code or to
@@ -150,8 +154,30 @@ page_fault(struct intr_frame *f)
 
     /* If page fault occurs in user mode, terminates the current
      process. */
-    if (user)
-        syscall_exit(-1);
+    // if (user)
+    //     syscall_exit(-1);
+
+    if (!not_present || is_kernel_vaddr (fault_addr)) {
+        syscall_exit (-1);
+    }
+
+    hash_finder.upage = pg_round_down (fault_addr);
+    found_elem = hash_find (&thread_current ()->supplemental_page_table, &hash_finder.elem);
+    spte = found_elem ? hash_entry (found_elem, struct supplemental_page_table_entry, elem) : NULL;
+
+    if(!spte) {
+        syscall_exit (-1);
+    }
+
+    if (spte->status == 0) {
+        load_file_page (spte);
+    }
+    else {
+        syscall_exit (-1);
+    }
+
+    /* Use fault_addr to search spt. */
+    /* Then call load_page function in the page.c. */
 
     /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
