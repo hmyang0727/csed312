@@ -168,10 +168,19 @@ page_fault(struct intr_frame *f)
     lock_release (&t->supplemental_page_table_lock);
 
     if(!spte) {
-        if (lock_held_by_current_thread (syscall_get_filesys_lock ())) {
-            lock_release (syscall_get_filesys_lock ());
+        /* stack growth */
+        if (((f->esp - fault_addr) == 32 || (f->esp - fault_addr) == 4) &&   /* PUSH or PUSHA */
+            PHYS_BASE - fault_addr <= (1 << 23)) {  /* Is fault_addr in the possible stack area? */
+            grow_stack (fault_addr);
+            return;
         }
-        syscall_exit (-1);
+        else if (lock_held_by_current_thread (syscall_get_filesys_lock ())) {
+            lock_release (syscall_get_filesys_lock ());
+            syscall_exit (-1);
+        }
+        else {
+            syscall_exit (-1);
+        }
     }
 
     if (spte->status == 0) {

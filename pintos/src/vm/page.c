@@ -3,6 +3,7 @@
 #include "threads/palloc.h"
 #include "threads/synch.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "vm/page.h"
 #include "vm/frame.h"
@@ -29,7 +30,7 @@ void spt_init (struct hash* supplemental_page_table, struct lock* supplemental_p
     lock_init (supplemental_page_table_lock);
 }
 
-bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable) {
+bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable, int status) {
     struct supplemental_page_table_entry* spte;
     struct thread* t = thread_current ();
 
@@ -37,7 +38,7 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpag
 
     ASSERT (spte != NULL);
 
-    spte->status = 0; /* Status: Not loaded. */
+    spte->status = status; /* Status: Not loaded. */
     spte->file = file;
     spte->ofs = ofs;
     spte->upage = upage;
@@ -89,4 +90,21 @@ bool load_file_page (struct supplemental_page_table_entry* spte) {
     spte->status = 1; /* Status: In physical memory. */
     spte->kpage = kpage;
     return true;
+}
+
+void grow_stack (void* fault_addr) {
+    void* frame;
+    struct thread* t = thread_current ();
+    bool success;
+
+    frame = alloc_frame_entry ((PAL_USER | PAL_ZERO), pg_round_down (fault_addr));
+
+    success = pagedir_set_page (t->pagedir, pg_round_down (fault_addr), frame, true);
+    if (success) {
+        insert_unmapped_spte (NULL, 0, pg_round_down (fault_addr), frame, 0, 0, true, 1);
+        return;
+    }
+    else {
+        free_frame_entry (frame);
+    }
 }

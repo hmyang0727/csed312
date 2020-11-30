@@ -27,9 +27,12 @@ struct supplemental_page_table_entry {
 void spt_init (struct hash*, struct lock*);
 
 /* Insert supplemental page table entry. */
-bool insert_unmapped_spte (struct file*, off_t, void*, void*, uint32_t, uint32_t, bool);
+bool insert_unmapped_spte (struct file*, off_t, void*, void*, uint32_t, uint32_t, bool, int);
 
 /* Load file page that has not been loaded. */
 bool load_file_page (struct supplemental_page_table_entry*);
+
+/* Grow stack. */
+void grow_stack (void* fault_addr);
 
 #endif

@@ -549,7 +549,7 @@ load_segment(struct file *file, off_t ofs, uint8_t *upage,
         //     return false;
         // }                                               Yayyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy!
 
-        if (!insert_unmapped_spte (file, ofs, upage, NULL, page_read_bytes, page_zero_bytes, writable)) {
+        if (!insert_unmapped_spte (file, ofs, upage, NULL, page_read_bytes, page_zero_bytes, writable, 0)) {
             return false;
         }
 

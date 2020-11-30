@@ -24,8 +24,6 @@ void frame_init () {
 }
 
 void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
-    // int is_user = flags & PAL_USER;
-    // int is_zero = flags & PAL_ZERO;
     void* frame;
     struct frame_table_entry* fte;
 
@@ -36,6 +34,7 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
     frame = palloc_get_page (flags);
     if(!frame) {
         free (fte);
+        /* Add eviction. */
         return NULL;
     }
 
