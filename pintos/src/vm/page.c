@@ -54,7 +54,7 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpag
     }
     else {
         lock_release (&t->supplemental_page_table_lock);
-        // free (spte);
+        free (spte);
         return false;
     }
 }

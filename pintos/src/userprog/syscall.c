@@ -358,9 +358,6 @@ static int syscall_read(int fd, void *buffer, unsigned size)
     struct hash_elem* found_elem;
     struct thread* t = thread_current ();
 
-    unsigned buffer_size = size;
-    void* buffer_tmp = buffer;
-
     for (i = 0; i < size; i++) {
         check_vaddr(buffer + i);
     }
