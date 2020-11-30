@@ -155,8 +155,6 @@ page_fault(struct intr_frame *f)
 
     /* If page fault occurs in user mode, terminates the current
      process. */
-    // if (user)
-    //     syscall_exit(-1);
     if (!not_present || is_kernel_vaddr (fault_addr)) {
         syscall_exit (-1);
     }
@@ -169,8 +167,8 @@ page_fault(struct intr_frame *f)
 
     if(!spte) {
         /* stack growth */
-        if ((((f->esp - fault_addr) <= 32) || (f->esp - fault_addr) == 4) &&   /* PUSH or PUSHA */
-            (PHYS_BASE - 0x800000 <= fault_addr && fault_addr < PHYS_BASE)) {  /* Is fault_addr in the possible stack area? */
+        if (((f->esp - fault_addr) <= 32) &&         /* Maximum PUSH is 32 bytes. */
+            (PHYS_BASE - 0x800000 <= fault_addr)) {  /* Is fault_addr in the possible stack area? */
             grow_stack (fault_addr);
             return;
         }
