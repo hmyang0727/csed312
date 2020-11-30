@@ -38,7 +38,7 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpag
 
     ASSERT (spte != NULL);
 
-    spte->status = status; /* Status: Not loaded. */
+    spte->status = status;
     spte->file = file;
     spte->ofs = ofs;
     spte->upage = upage;

@@ -169,8 +169,8 @@ page_fault(struct intr_frame *f)
 
     if(!spte) {
         /* stack growth */
-        if (((f->esp - fault_addr) == 32 || (f->esp - fault_addr) == 4) &&   /* PUSH or PUSHA */
-            PHYS_BASE - fault_addr <= (1 << 23)) {  /* Is fault_addr in the possible stack area? */
+        if ((((f->esp - fault_addr) <= 32) || (f->esp - fault_addr) == 4) &&   /* PUSH or PUSHA */
+            (PHYS_BASE - 0x800000 <= fault_addr && fault_addr < PHYS_BASE)) {  /* Is fault_addr in the possible stack area? */
             grow_stack (fault_addr);
             return;
         }
