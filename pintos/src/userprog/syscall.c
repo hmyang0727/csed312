@@ -212,8 +212,7 @@ syscall_handler(struct intr_frame *f)
 static void
 check_vaddr(const void *vaddr)
 {
-    if (!vaddr || !is_user_vaddr(vaddr) ||
-        !pagedir_get_page(thread_get_pagedir(), vaddr))
+    if (!vaddr || !is_user_vaddr(vaddr))
         syscall_exit(-1);
 }
 
@@ -354,9 +353,17 @@ static int syscall_read(int fd, void *buffer, unsigned size)
 {
     struct file_descriptor_entry *fde;
     int bytes_read, i;
+    void* upage;
+    struct supplemental_page_table_entry* spte, hash_finder;
+    struct hash_elem* found_elem;
+    struct thread* t = thread_current ();
 
-    for (i = 0; i < size; i++)
+    unsigned buffer_size = size;
+    void* buffer_tmp = buffer;
+
+    for (i = 0; i < size; i++) {
         check_vaddr(buffer + i);
+    }
 
     if (fd == 0)
     {
@@ -373,6 +380,22 @@ static int syscall_read(int fd, void *buffer, unsigned size)
         return -1;
 
     lock_acquire(&filesys_lock);
+    
+    // lock_acquire (&t->supplemental_page_table_lock);
+
+    // for (upage = pg_round_down (buffer); upage < buffer + size; upage += PGSIZE) {
+    //     hash_finder.upage = upage;
+    //     found_elem = hash_find (&t->supplemental_page_table, &hash_finder.elem);
+    //     spte = found_elem ? hash_entry (found_elem, struct supplemental_page_table_entry, elem) : NULL;
+    //     if (spte != NULL) {
+    //         if (spte->status != 1) {
+    //             load_file_page (spte);
+    //         }
+    //     }
+    // }
+
+    // lock_release (&t->supplemental_page_table_lock);
+
     bytes_read = (int)file_read(fde->file, buffer, (off_t)size);
     lock_release(&filesys_lock);
 

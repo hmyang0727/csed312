@@ -54,7 +54,7 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpag
     }
     else {
         lock_release (&t->supplemental_page_table_lock);
-        free (spte);
+        // free (spte);
         return false;
     }
 }
@@ -79,13 +79,13 @@ bool load_file_page (struct supplemental_page_table_entry* spte) {
     memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
 
     /* Add the page to the process's address space. */
-    if (!(pagedir_get_page(t->pagedir, spte->upage) == NULL 
-          && pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable)))
+    if (!pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable))
     {
         free_frame_entry (kpage);
         return false;
     }
 
     spte->status = 1; /* Status: In physical memory. */
+    spte->kpage = kpage;
     return true;
 }

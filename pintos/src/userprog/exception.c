@@ -157,16 +157,20 @@ page_fault(struct intr_frame *f)
      process. */
     // if (user)
     //     syscall_exit(-1);
-
     if (!not_present || is_kernel_vaddr (fault_addr)) {
         syscall_exit (-1);
     }
 
+    lock_acquire (&t->supplemental_page_table_lock);
     hash_finder.upage = pg_round_down (fault_addr);
     found_elem = hash_find (&t->supplemental_page_table, &hash_finder.elem);
     spte = found_elem ? hash_entry (found_elem, struct supplemental_page_table_entry, elem) : NULL;
+    lock_release (&t->supplemental_page_table_lock);
 
     if(!spte) {
+        if (lock_held_by_current_thread (syscall_get_filesys_lock ())) {
+            lock_release (syscall_get_filesys_lock ());
+        }
         syscall_exit (-1);
     }
 

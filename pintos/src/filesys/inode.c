@@ -299,14 +299,14 @@ inode_write_at (struct inode *inode, const void *buffer_, off_t size,
           /* If the sector contains data before or after the chunk
              we're writing, then we need to read in the sector
              first.  Otherwise we start with a sector of all zeros. */
-          if (sector_ofs > 0 || chunk_size < sector_left) 
+          if (sector_ofs > 0 || chunk_size < sector_left) {
             block_read (fs_device, sector_idx, bounce);
+          }
           else
             memset (bounce, 0, BLOCK_SECTOR_SIZE);
           memcpy (bounce + sector_ofs, buffer + bytes_written, chunk_size);
           block_write (fs_device, sector_idx, bounce);
         }
-
       /* Advance. */
       size -= chunk_size;
       offset += chunk_size;
