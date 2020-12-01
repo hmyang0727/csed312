@@ -156,6 +156,9 @@ page_fault(struct intr_frame *f)
     /* If page fault occurs in user mode, terminates the current
      process. */
     if (!not_present || is_kernel_vaddr (fault_addr)) {
+        if (lock_held_by_current_thread (syscall_get_filesys_lock ())) {
+            lock_release (syscall_get_filesys_lock ());
+        }
         syscall_exit (-1);
     }
 

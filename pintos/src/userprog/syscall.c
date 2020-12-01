@@ -392,7 +392,6 @@ static int syscall_read(int fd, void *buffer, unsigned size)
     // }
 
     // lock_release (&t->supplemental_page_table_lock);
-
     bytes_read = (int)file_read(fde->file, buffer, (off_t)size);
     lock_release(&filesys_lock);
 
