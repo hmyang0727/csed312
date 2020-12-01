@@ -11,6 +11,7 @@
 #include "threads/synch.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "threads/malloc.h"
 #include "userprog/pagedir.h"
 #include "userprog/process.h"
 
@@ -31,6 +32,8 @@ static int syscall_read(int, void *, unsigned);
 static int syscall_write(int, const void *, unsigned);
 static void syscall_seek(int, unsigned);
 static unsigned syscall_tell(int);
+static mapid_t syscall_mmap (int, void*);
+static void syscall_munmap (mapid_t);
 
 /* Registers the system call interrupt handler. */
 void syscall_init(void)
@@ -200,6 +203,30 @@ syscall_handler(struct intr_frame *f)
         fd = *(int *)(esp + sizeof(uintptr_t));
 
         syscall_close(fd);
+        break;
+    }
+    case SYS_MMAP:
+    {
+        int fd;
+        void* addr;
+
+        check_vaddr (esp + sizeof (uintptr_t));
+        check_vaddr (esp + 3 * sizeof (uintptr_t) - 1);
+        fd = *(int*)(esp + sizeof (uintptr_t));
+        addr = *(void **)(esp + 2 * sizeof(uintptr_t));
+
+        f->eax = (uint32_t)syscall_mmap (fd, addr);
+        break;
+    }
+    case SYS_MUNMAP:
+    {
+        mapid_t mapping;
+
+        check_vaddr (esp + sizeof (uintptr_t));
+        check_vaddr (esp + 2 * sizeof (uintptr_t) - 1);
+        mapping = *(mapid_t*)(esp + sizeof (uintptr_t));
+
+        syscall_munmap (mapping);
         break;
     }
     default:
@@ -467,4 +494,73 @@ void syscall_close(int fd)
     list_remove(&fde->fdtelem);
     palloc_free_page(fde);
     lock_release(&filesys_lock);
+}
+
+mapid_t syscall_mmap (int fd, void* addr) {
+    struct file_descriptor_entry* fde;
+    off_t len, position;
+    struct supplemental_page_table_entry* spte, hash_finder;
+    struct hash_elem* found_elem;
+    struct thread* t = thread_current ();
+    struct file* fp;
+    struct mmap_table_entry* mte;
+    uint32_t read_bytes, zero_bytes;
+
+    /* Mapping stdin or stdout? Is addr valid? */
+    if (fd == 0 || fd == 1 || addr == NULL || (uintptr_t)addr & 0xfff) {
+        return -1;
+    }
+
+    fde = process_get_fde (fd);
+
+    /* No such file descriptor? */
+    if (!fde) {
+        return -1;
+    }
+
+    lock_acquire (&filesys_lock);
+    len = file_length (fde->file);
+    lock_release (&filesys_lock);
+
+    /* Zero length? */
+    if (len == 0) {
+        return -1;
+    }
+
+    /* Already mapped? */
+    for (position = 0; position < len; position += PGSIZE) {
+        spte = find_spte (addr + position);
+
+        if (spte) {
+            return -1;
+        }
+    }
+
+    lock_acquire (&filesys_lock);
+    fp = file_reopen (fde->file);
+    lock_release (&filesys_lock);
+
+    mte = (struct mmap_table_entry*)malloc (sizeof (struct mmap_table_entry));
+
+    ASSERT (mte != NULL);
+
+    mte->mapid = t->max_mapid++;
+    mte->file = fp;
+    mte->vaddr = addr;
+
+    for (position = 0; position < len; position += PGSIZE) {
+        read_bytes = len - position < PGSIZE ? len - position : PGSIZE;
+        zero_bytes = PGSIZE - read_bytes;
+        if (!insert_unmapped_spte (fp, position, addr + position, NULL, read_bytes, zero_bytes, true, 0)) {
+            return -1;
+        }
+    }
+
+    list_push_back (&t->mmap_table, &mte->elem);
+
+    return mte->mapid;
+}
+
+void syscall_munmap (mapid_t mapping) {
+    
 }

@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "vm/page.h"
 #include "threads/synch.h"
+#include "filesys/file.h"
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -21,10 +22,19 @@ enum thread_status
 typedef int tid_t;
 #define TID_ERROR ((tid_t)-1) /* Error value for tid_t. */
 
+typedef int mapid_t;
+
 /* Thread priorities. */
 #define PRI_MIN 0      /* Lowest priority. */
 #define PRI_DEFAULT 31 /* Default priority. */
 #define PRI_MAX 63     /* Highest priority. */
+
+struct mmap_table_entry {
+   mapid_t mapid;
+   void* vaddr;
+   struct file* file;
+   struct list_elem elem;
+};
 
 /* A kernel thread or user process.
 
@@ -121,6 +131,8 @@ struct thread
 #ifdef VM
    struct hash supplemental_page_table;
    struct lock supplemental_page_table_lock;
+   struct list mmap_table;
+   mapid_t max_mapid;
 #endif
 
     /* Owned by thread.c. */

@@ -127,8 +127,7 @@ page_fault(struct intr_frame *f)
     bool write;       /* True: access was write, false: access was read. */
     bool user;        /* True: access by user, false: access by kernel. */
     void *fault_addr; /* Fault address. */
-    struct supplemental_page_table_entry* spte, hash_finder;
-    struct hash_elem* found_elem;
+    struct supplemental_page_table_entry* spte;
     struct thread* t = thread_current ();
 
     /* Obtain faulting address, the virtual address that was
@@ -163,9 +162,7 @@ page_fault(struct intr_frame *f)
     }
 
     lock_acquire (&t->supplemental_page_table_lock);
-    hash_finder.upage = pg_round_down (fault_addr);
-    found_elem = hash_find (&t->supplemental_page_table, &hash_finder.elem);
-    spte = found_elem ? hash_entry (found_elem, struct supplemental_page_table_entry, elem) : NULL;
+    spte = find_spte (pg_round_down (fault_addr));
     lock_release (&t->supplemental_page_table_lock);
 
     if(!spte) {

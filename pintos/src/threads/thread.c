@@ -234,6 +234,8 @@ tid_t thread_create(const char *name, int priority,
 
 #ifdef VM
     spt_init (&t->supplemental_page_table, &t->supplemental_page_table_lock);
+    list_init (&t->mmap_table);
+    t->max_mapid = 0;
 #endif
 
     /* Add to run queue. */
