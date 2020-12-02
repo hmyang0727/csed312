@@ -35,6 +35,8 @@ static unsigned syscall_tell(int);
 static mapid_t syscall_mmap (int, void*);
 static void syscall_munmap (mapid_t);
 
+struct mmap_table_entry* find_mmap_table_entry(struct thread*, mapid_t);
+
 /* Registers the system call interrupt handler. */
 void syscall_init(void)
 {
@@ -562,5 +564,40 @@ mapid_t syscall_mmap (int fd, void* addr) {
 }
 
 void syscall_munmap (mapid_t mapping) {
-    
+    off_t len, position;
+    struct thread* cur = thread_current ();
+    struct mmap_table_entry* mte;
+    void* vaddr;
+
+    mte = find_mmap_table_entry(cur, mapping);
+
+    if(mte == NULL) { return; }
+
+    lock_acquire(&filesys_lock);
+    len = file_length(mte->file);
+    for(position = 0; position < len; position += PGSIZE) {
+        vaddr = mte->vaddr + position;
+        /* Different action comparing with dirty bit and status. 
+         * Now in physical memory or swap disk?
+         * Is dirty? Save its information to disk. */
+    }
+
+
+    lock_release(&filesys_lock);
+    return;
+}
+
+struct mmap_table_entry* find_mmap_table_entry(struct thread* t, mapid_t mapping) {
+    struct mmap_table_entry* mte;
+    struct list_elem *e;
+
+    ASSERT(t != NULL);
+
+    for (e = list_begin(&t->mmap_table); e != list_end(&t->mmap_table); e = list_next(e))
+    {
+        mte = list_entry(e, struct mmap_table_entry, elem);
+        if(mte->mapid == mapping) { return mte; }
+    }
+
+    return NULL;
 }
