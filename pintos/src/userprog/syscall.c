@@ -513,6 +513,11 @@ mapid_t syscall_mmap (int fd, void* addr) {
         return -1;
     }
 
+    /* Is stack area? */
+    if (PHYS_BASE - 0x800000 <= addr) {
+        return -1;
+    }
+
     fde = process_get_fde (fd);
 
     /* No such file descriptor? */
@@ -565,25 +570,41 @@ mapid_t syscall_mmap (int fd, void* addr) {
 
 void syscall_munmap (mapid_t mapping) {
     off_t len, position;
-    struct thread* cur = thread_current ();
+    struct thread* t = thread_current ();
     struct mmap_table_entry* mte;
+    struct hash_elem* elem;
+    struct supplemental_page_table_entry* spte_finder, *spte;
     void* vaddr;
 
-    mte = find_mmap_table_entry(cur, mapping);
+    mte = find_mmap_table_entry(t, mapping);
 
     if(mte == NULL) { return; }
 
     lock_acquire(&filesys_lock);
     len = file_length(mte->file);
     for(position = 0; position < len; position += PGSIZE) {
-        vaddr = mte->vaddr + position;
         /* Different action comparing with dirty bit and status. 
          * Now in physical memory or swap disk?
          * Is dirty? Save its information to disk. */
+        // 1. delete supplemental page table entry and save it to spte variable.
+        // 2. if (pagedir_is_dirty && status == 1) need to write back.
+        // 3. move file pos to position using file_seek.
+        // 4. using spte->kpage, call file_write function.
+        vaddr = mte->vaddr + position;
+        spte_finder = find_spte (vaddr);
+        elem = hash_delete (&t->supplemental_page_table, &spte_finder->elem);
+        spte = hash_entry (elem, struct supplemental_page_table_entry, elem);
+        if (pagedir_is_dirty (t->pagedir, vaddr) && spte->status == 1) {
+            file_seek (spte->file, position);
+            file_write (spte->file, spte->kpage, spte->read_bytes);
+        }
+        free (spte);
     }
 
+    file_close (mte->file);
 
     lock_release(&filesys_lock);
+
     return;
 }
 
