@@ -33,6 +33,7 @@
 #endif
 #ifdef VM
 #include "vm/frame.h"
+#include "vm/swap.h"
 #endif
 #ifdef FILESYS
 #include "devices/block.h"
@@ -109,6 +110,7 @@ int main(void)
 
 #ifdef VM
     frame_init ();
+    swap_init ();
 #endif
 
     /* Initialize interrupt handlers. */

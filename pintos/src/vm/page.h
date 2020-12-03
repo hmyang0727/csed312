@@ -22,6 +22,8 @@ struct supplemental_page_table_entry {
 
     bool is_mmap;
 
+    size_t swap_index;
+
     struct hash_elem elem;
 };
 

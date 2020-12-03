@@ -54,18 +54,25 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
 
         victim_spte = find_spte (victim->upage);
 
+        /* Page is dirty and memory-mapped file: Write back. */
         if (victim_spte->is_mmap && pagedir_is_dirty (victim->owner->pagedir, victim->upage)) {
-            // write back
+            file_seek (victim_spte->file, victim_spte->ofs);
+            file_write (victim_spte->file, victim_spte->kpage, victim_spte->read_bytes);
         }
+        /* Page is dirty and originated from file, not mmap file: Swap. */
         else if (!victim_spte->is_mmap && pagedir_is_dirty (victim->owner->pagedir, victim->upage)) {
             // swapppppppppppppppppp
         }
+        /* Page is not dirty and vaddr is in the stack area: Swap. */
         else if (!pagedir_is_dirty (victim->owner->pagedir, victim->upage) && PHYS_BASE - 0x800000 <= victim->upage) {
             // swappppppppppppppppppp
         }
+        /* Ignore. */
         else {
             // Yay
         }
+
+        // Change victim's spte information.
     }
 
     fte->owner = thread_current ();
