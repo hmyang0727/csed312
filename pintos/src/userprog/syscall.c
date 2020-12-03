@@ -33,7 +33,6 @@ static int syscall_write(int, const void *, unsigned);
 static void syscall_seek(int, unsigned);
 static unsigned syscall_tell(int);
 static mapid_t syscall_mmap (int, void*);
-static void syscall_munmap (mapid_t);
 
 struct mmap_table_entry* find_mmap_table_entry(struct thread*, mapid_t);
 
@@ -602,6 +601,8 @@ void syscall_munmap (mapid_t mapping) {
     }
 
     file_close (mte->file);
+
+    list_remove (&mte->elem);
 
     lock_release(&filesys_lock);
 

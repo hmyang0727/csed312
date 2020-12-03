@@ -161,9 +161,10 @@ void process_exit(void)
     struct thread *cur = thread_current();
     struct process *pcb = thread_get_pcb();
     struct list *children = thread_get_children();
-    struct list_elem *e;
     struct lock *filesys_lock = syscall_get_filesys_lock();
     uint32_t *pd;
+    struct mmap_table_entry* mte;
+    struct list_elem *e;
     int max_fd = thread_get_next_fd(), i;
 
     /* Set exit flag, remove all of the current process's exited children,
@@ -182,6 +183,13 @@ void process_exit(void)
     lock_acquire(filesys_lock);
     file_close(thread_get_running_file());
     lock_release(filesys_lock);
+
+    /* Call munmap systel call. */
+    for (e = list_begin(&cur->mmap_table); e != list_end(&cur->mmap_table); e = list_next(e))
+    {
+        mte = list_entry(e, struct mmap_table_entry, elem);
+        syscall_munmap (mte->mapid);
+    }
 
     /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
