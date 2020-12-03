@@ -20,6 +20,8 @@ struct supplemental_page_table_entry {
     uint32_t zero_bytes;
     bool writable;
 
+    bool is_mmap;
+
     struct hash_elem elem;
 };
 
@@ -27,7 +29,7 @@ struct supplemental_page_table_entry {
 void spt_init (struct hash*, struct lock*);
 
 /* Insert supplemental page table entry. */
-bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable, int status);
+bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable, int status, bool is_mmap);
 
 /* Load file page that has not been loaded. */
 bool load_file_page (struct supplemental_page_table_entry*);

@@ -30,7 +30,7 @@ void spt_init (struct hash* supplemental_page_table, struct lock* supplemental_p
     lock_init (supplemental_page_table_lock);
 }
 
-bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable, int status) {
+bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable, int status, bool is_mmap) {
     struct supplemental_page_table_entry* spte;
     struct thread* t = thread_current ();
 
@@ -48,6 +48,7 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpag
     spte->writable = writable;
     spte->is_dirty = false;
     spte->is_accessed = false;
+    spte->is_mmap = is_mmap;
 
     lock_acquire (&t->supplemental_page_table_lock);
     if(!hash_insert (&t->supplemental_page_table, &spte->elem)) {
@@ -101,7 +102,7 @@ void grow_stack (void* fault_addr) {
 
     success = pagedir_set_page (t->pagedir, pg_round_down (fault_addr), frame, true);
     if (success) {
-        insert_unmapped_spte (NULL, 0, pg_round_down (fault_addr), frame, 0, 0, true, 1);
+        insert_unmapped_spte (NULL, 0, pg_round_down (fault_addr), frame, 0, 0, true, 1, false);
         return;
     }
     else {

@@ -557,7 +557,7 @@ mapid_t syscall_mmap (int fd, void* addr) {
     for (position = 0; position < len; position += PGSIZE) {
         read_bytes = len - position < PGSIZE ? len - position : PGSIZE;
         zero_bytes = PGSIZE - read_bytes;
-        if (!insert_unmapped_spte (fp, position, addr + position, NULL, read_bytes, zero_bytes, true, 0)) {
+        if (!insert_unmapped_spte (fp, position, addr + position, NULL, read_bytes, zero_bytes, true, 0, true)) {
             return -1;
         }
     }
