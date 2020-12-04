@@ -108,14 +108,6 @@ int main(void)
     gdt_init();
 #endif
 
-#ifdef VM
-    printf("a\n\n");
-    frame_init ();
-    printf("aa\n\n");
-    swap_init ();
-    printf("aaa\n\n");
-#endif
-
     /* Initialize interrupt handlers. */
     intr_init();
     timer_init();
@@ -136,6 +128,11 @@ int main(void)
     ide_init();
     locate_block_devices();
     filesys_init(format_filesys);
+#endif
+
+#ifdef VM
+    frame_init ();
+    swap_init ();
 #endif
 
     printf("Boot complete.\n");
