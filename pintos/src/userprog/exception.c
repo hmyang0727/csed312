@@ -7,6 +7,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "vm/page.h"
+#include "vm/swap.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -165,7 +166,7 @@ page_fault(struct intr_frame *f)
     spte = find_spte (pg_round_down (fault_addr));
     lock_release (&t->supplemental_page_table_lock);
 
-    if(!spte) {
+    if (!spte) {
         /* stack growth */
         if (((f->esp - fault_addr) <= 32) &&         /* Maximum PUSH is 32 bytes. */
             (PHYS_BASE - 0x800000 <= fault_addr)) {  /* Is fault_addr in the possible stack area? */
@@ -181,7 +182,7 @@ page_fault(struct intr_frame *f)
         }
     }
 
-    if (spte->status == 0) {
+    if (spte->status == 0 || spte->status == 2) {
         load_file_page (spte);
         return;
     }

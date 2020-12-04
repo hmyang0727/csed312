@@ -30,7 +30,7 @@ void swap_init () {
     return;
 }
 
-size_t alloc_swap_slot (void* vaddr) {
+size_t alloc_swap_slot (void* kpage) {
     size_t swap_index;
     int position;
 
@@ -39,8 +39,18 @@ size_t alloc_swap_slot (void* vaddr) {
     ASSERT (swap_index != BITMAP_ERROR);
 
     for (position = 0; position < SECTORS_PER_PAGE; position++) {
-        // block_write (swap_block, swap_index * SECTORS_PER_PAGE + position, vaddr + )
+        block_write (swap_block, swap_index * SECTORS_PER_PAGE + position, kpage + position * BLOCK_SECTOR_SIZE);
     }
 
     return swap_index;
+}
+
+void free_swap_slot (size_t swap_index, void* kpage) {
+    int position;
+
+    for (position = 0; position < SECTORS_PER_PAGE; position++) {
+        block_read (swap_block, swap_index * SECTORS_PER_PAGE + position, kpage + position * BLOCK_SECTOR_SIZE);
+    }
+
+    bitmap_set (swap_available, swap_index, true);
 }

@@ -6,6 +6,7 @@
 #include "threads/synch.h"
 #include "userprog/pagedir.h"
 #include "vm/frame.h"
+#include "vm/swap.h"
 
 static struct list frame_table;         /* Frame table. */
 static struct lock frame_table_lock;    /* Lock for frame table. */
@@ -32,6 +33,9 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
     void* frame;
     struct frame_table_entry* fte, *victim;
     struct supplemental_page_table_entry* victim_spte;
+    struct thread* t = thread_current ();
+    size_t swap_index;
+    bool is_eviction = false;
 
     fte = malloc(sizeof(struct frame_table_entry));
 
@@ -39,6 +43,7 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
 
     frame = palloc_get_page (flags);
     if(!frame) {
+        is_eviction = true;
         /* Eviction. */
         lock_acquire (&frame_table_lock);
         victim = get_victim ();
@@ -61,27 +66,42 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
         }
         /* Page is dirty and originated from file, not mmap file: Swap. */
         else if (!victim_spte->is_mmap && pagedir_is_dirty (victim->owner->pagedir, victim->upage)) {
-            // swapppppppppppppppppp
+            swap_index = alloc_swap_slot (victim->kpage);
+            victim_spte->status = 2;
+            victim_spte->swap_index = swap_index;
+            pagedir_clear_page (t->pagedir, victim_spte->upage);
         }
         /* Page is not dirty and vaddr is in the stack area: Swap. */
         else if (!pagedir_is_dirty (victim->owner->pagedir, victim->upage) && PHYS_BASE - 0x800000 <= victim->upage) {
-            // swappppppppppppppppppp
+            swap_index = alloc_swap_slot (victim->kpage);
+            victim_spte->status = 2;
+            victim_spte->swap_index = swap_index;
+            pagedir_clear_page (t->pagedir, victim_spte->upage);
         }
         /* Ignore. */
         else {
-            // Yay
+            victim_spte->status = 0;
+            pagedir_clear_page (t->pagedir, victim_spte->upage);
         }
 
-        // Change victim's spte information.
+        free (fte);
+        fte = victim;
     }
 
     fte->owner = thread_current ();
-    fte->kpage = frame;
+    if (!is_eviction) {
+        fte->kpage = frame;
+    }
     fte->upage = upage;
 
-    lock_acquire (&frame_table_lock);
-    list_push_back (&frame_table, &fte->elem);
-    lock_release (&frame_table_lock);
+    if (!is_eviction) {
+        lock_acquire (&frame_table_lock);
+        list_push_back (&frame_table, &fte->elem);
+        lock_release (&frame_table_lock);
+    }
+    else {
+        lock_release (&frame_table_lock);
+    }
 
     return frame;
 }
@@ -107,7 +127,7 @@ void free_frame_entry (void* kpage) {
     palloc_free_page (kpage);
 }
 
-/* Select victim based on Clock algorithm. */
+/* Select victim based on clock algorithm. */
 static struct frame_table_entry* get_victim () {
     struct thread* t;
     struct frame_table_entry* victim;

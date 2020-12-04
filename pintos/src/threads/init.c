@@ -109,8 +109,11 @@ int main(void)
 #endif
 
 #ifdef VM
+    printf("a\n\n");
     frame_init ();
+    printf("aa\n\n");
     swap_init ();
+    printf("aaa\n\n");
 #endif
 
     /* Initialize interrupt handlers. */
