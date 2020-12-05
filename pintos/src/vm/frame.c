@@ -21,9 +21,9 @@ struct frame_table_entry {
 };
 
 static struct frame_table_entry* clock_pointer;
-static struct frame_table_entry* clock_ptr;
+static struct list_elem* clock_ptr;
 
-static struct list_elem* get_victim (struct thread*);
+static struct frame_table_entry* get_victim (struct thread*);
 
 void frame_init () {
     list_init (&frame_table);
