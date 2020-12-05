@@ -63,59 +63,57 @@ bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpag
     }
 }
 
-bool load_file_page (struct supplemental_page_table_entry* spte) {
+bool load_file_page (struct thread* t, struct supplemental_page_table_entry* spte) {
     uint8_t *kpage;
-    struct thread* t = thread_current ();
-
+    
     /* Not loaded yet. */
-    if (spte->status == 0) {
-        file_seek(spte->file, spte->ofs);
+    file_seek(spte->file, spte->ofs);
 
-        /* Get a page of memory. */
-        kpage = alloc_frame_entry(PAL_USER, spte->upage);
-        if (kpage == NULL)
-            return false;
+    /* Get a page of memory. */
+    kpage = alloc_frame_entry(PAL_USER, spte->upage);
+    if (kpage == NULL)
+        return false;
 
-        /* Load this page. */
-        if (file_read(spte->file, kpage, spte->read_bytes) != (int)spte->read_bytes)
-        {
-            free_frame_entry (kpage);
-            return false;
-        }
-        memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
-
-        /* Add the page to the process's address space. */
-        if (!pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable))
-        {
-            free_frame_entry (kpage);
-            return false;
-        }
-
-        spte->status = 1; /* Status: In physical memory. */
-        spte->kpage = kpage;
-        return true;
+    /* Load this page. */
+    if (file_read(spte->file, kpage, spte->read_bytes) != (int)spte->read_bytes)
+    {
+        free_frame_entry (kpage);
+        return false;
     }
-    /* On the swap disk. */
-    else {
-        kpage = alloc_frame_entry (PAL_USER, spte->upage);
+    memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
 
-        /* Add the page to the process's address space. */
-        if (!pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable))
-        {
-            free_frame_entry (kpage);
-            return false;
-        }
-
-        spte->kpage = kpage;
-        free_swap_slot (spte->swap_index, spte->kpage);
-        spte->status = 1;
-        return true;
+    /* Add the page to the process's address space. */
+    if (!pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable))
+    {
+        free_frame_entry (kpage);
+        return false;
     }
+
+    spte->status = 1; /* Status: In physical memory. */
+    spte->kpage = kpage;
+    return true;
 }
 
-void grow_stack (void* fault_addr) {
+bool load_from_swap_disk (struct thread* t, struct supplemental_page_table_entry* spte) {
+    uint8_t *kpage;
+
+    kpage = alloc_frame_entry (PAL_USER, spte->upage);
+
+    /* Add the page to the process's address space. */
+    if (!pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable))
+    {
+        free_frame_entry (kpage);
+        return false;
+    }
+
+    spte->kpage = kpage;
+    free_swap_slot (spte->swap_index, spte->kpage);
+    spte->status = 1;
+    return true;
+}
+
+void grow_stack (struct thread* t, void* fault_addr) {
     void* frame;
-    struct thread* t = thread_current ();
     bool success;
 
     frame = alloc_frame_entry ((PAL_USER | PAL_ZERO), pg_round_down (fault_addr));

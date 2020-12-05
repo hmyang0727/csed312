@@ -170,7 +170,7 @@ page_fault(struct intr_frame *f)
         /* stack growth */
         if (((f->esp - fault_addr) <= 32) &&         /* Maximum PUSH is 32 bytes. */
             (PHYS_BASE - 0x800000 <= fault_addr)) {  /* Is fault_addr in the possible stack area? */
-            grow_stack (fault_addr);
+            grow_stack (t, fault_addr);
             return;
         }
         else if (lock_held_by_current_thread (syscall_get_filesys_lock ())) {
@@ -182,10 +182,16 @@ page_fault(struct intr_frame *f)
         }
     }
 
-    if (spte->status == 0 || spte->status == 2) {
-        load_file_page (spte);
+    if (spte->status == 0) {
+        load_file_page (t, spte);
         return;
     }
+
+    else if (spte->status == 2) {
+        load_from_swap_disk(t, spte);
+        return;
+    }
+
     else {
         syscall_exit (-1);
     }

@@ -34,10 +34,13 @@ void spt_init (struct hash*, struct lock*);
 bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable, int status, bool is_mmap);
 
 /* Load file page that has not been loaded. */
-bool load_file_page (struct supplemental_page_table_entry*);
+bool load_file_page (struct thread*, struct supplemental_page_table_entry*);
+
+/* Load page from the swap disk. */
+bool load_from_swap_disk (struct thread* t, struct supplemental_page_table_entry* spte);
 
 /* Grow stack. */
-void grow_stack (void* fault_addr);
+void grow_stack (struct thread*, void* fault_addr);
 
 /* Find supplemental page table entry using virtual address. */
 struct supplemental_page_table_entry* find_spte (void*);
