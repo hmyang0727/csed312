@@ -17,7 +17,6 @@ static struct bitmap *swap_available;
 static size_t swap_size;
 static struct lock swap_lock;
 
-
 void swap_init () {
     swap_block = block_get_role (BLOCK_SWAP);
 

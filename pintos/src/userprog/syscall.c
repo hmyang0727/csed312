@@ -16,6 +16,7 @@
 #include "userprog/process.h"
 
 struct lock filesys_lock;
+void* esp;
 
 static void syscall_handler(struct intr_frame *);
 
@@ -48,7 +49,8 @@ void syscall_init(void)
 static void
 syscall_handler(struct intr_frame *f)
 {
-    void *esp = f->esp;
+    // void *esp = f->esp;
+    esp = f->esp;
     int syscall_num;
 
     check_vaddr(esp);
@@ -381,10 +383,6 @@ static int syscall_read(int fd, void *buffer, unsigned size)
 {
     struct file_descriptor_entry *fde;
     int bytes_read, i;
-    void* upage;
-    struct supplemental_page_table_entry* spte, hash_finder;
-    struct hash_elem* found_elem;
-    struct thread* t = thread_current ();
 
     for (i = 0; i < size; i++) {
         check_vaddr(buffer + i);
@@ -405,21 +403,6 @@ static int syscall_read(int fd, void *buffer, unsigned size)
         return -1;
 
     lock_acquire(&filesys_lock);
-    
-    // lock_acquire (&t->supplemental_page_table_lock);
-
-    // for (upage = pg_round_down (buffer); upage < buffer + size; upage += PGSIZE) {
-    //     hash_finder.upage = upage;
-    //     found_elem = hash_find (&t->supplemental_page_table, &hash_finder.elem);
-    //     spte = found_elem ? hash_entry (found_elem, struct supplemental_page_table_entry, elem) : NULL;
-    //     if (spte != NULL) {
-    //         if (spte->status != 1) {
-    //             load_file_page (spte);
-    //         }
-    //     }
-    // }
-
-    // lock_release (&t->supplemental_page_table_lock);
     bytes_read = (int)file_read(fde->file, buffer, (off_t)size);
     lock_release(&filesys_lock);
 
@@ -535,7 +518,7 @@ mapid_t syscall_mmap (int fd, void* addr) {
 
     /* Already mapped? */
     for (position = 0; position < len; position += PGSIZE) {
-        spte = find_spte (addr + position);
+        spte = find_spte (t, addr + position);
 
         if (spte) {
             return -1;
@@ -557,7 +540,7 @@ mapid_t syscall_mmap (int fd, void* addr) {
     for (position = 0; position < len; position += PGSIZE) {
         read_bytes = len - position < PGSIZE ? len - position : PGSIZE;
         zero_bytes = PGSIZE - read_bytes;
-        if (!insert_unmapped_spte (fp, position, addr + position, NULL, read_bytes, zero_bytes, true, 0, true)) {
+        if (!insert_unmapped_spte (t, fp, position, addr + position, NULL, read_bytes, zero_bytes, true, 0, true)) {
             return -1;
         }
     }
@@ -590,7 +573,7 @@ void syscall_munmap (mapid_t mapping) {
         // 3. move file pos to position using file_seek.
         // 4. using spte->kpage, call file_write function.
         vaddr = mte->vaddr + position;
-        spte_finder = find_spte (vaddr);
+        spte_finder = find_spte (t, vaddr);
         elem = hash_delete (&t->supplemental_page_table, &spte_finder->elem);
         spte = hash_entry (elem, struct supplemental_page_table_entry, elem);
         if (pagedir_is_dirty (t->pagedir, vaddr) && spte->status == 1) {
@@ -601,9 +584,7 @@ void syscall_munmap (mapid_t mapping) {
     }
 
     file_close (mte->file);
-
     list_remove (&mte->elem);
-
     lock_release(&filesys_lock);
 
     return;

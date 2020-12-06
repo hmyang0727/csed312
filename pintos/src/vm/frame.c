@@ -1,5 +1,6 @@
 #include <list.h>
 #include <stdio.h>
+#include <string.h>
 #include "threads/thread.h"
 #include "threads/malloc.h"
 #include "threads/vaddr.h"
@@ -10,6 +11,7 @@
 
 static struct list frame_table;         /* Frame table. */
 static struct lock frame_table_lock;    /* Lock for frame table. */
+static struct lock clock_pointer_lock;
 
 /* Frame table entry. */
 struct frame_table_entry {
@@ -26,6 +28,7 @@ static struct frame_table_entry* get_victim ();
 void frame_init () {
     list_init (&frame_table);
     lock_init (&frame_table_lock);
+    lock_init (&clock_pointer_lock);
     clock_pointer = NULL;
 }
 
@@ -37,7 +40,7 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
     size_t swap_index;
     bool is_eviction = false;
 
-    fte = malloc(sizeof(struct frame_table_entry));
+    fte = (struct frame_table_entry*)malloc(sizeof(struct frame_table_entry));
 
     ASSERT (fte != NULL);
 
@@ -57,33 +60,40 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
         // 2. Change victim's supplemental page table entry.
         // 3. Change victim information. (upage and owner) Below!
 
-        victim_spte = find_spte (victim->upage);
+        victim_spte = find_spte (victim->owner, victim->upage);
+
+        if (!victim_spte) {
+            insert_unmapped_spte (victim->owner, NULL, 0, victim->upage, NULL, 0, 0, true, 2, false);
+            victim_spte = find_spte (victim->owner, victim->upage);
+        }
 
         /* Page is dirty and memory-mapped file: Write back. */
         if (victim_spte->is_mmap && pagedir_is_dirty (victim->owner->pagedir, victim->upage)) {
             file_seek (victim_spte->file, victim_spte->ofs);
             file_write (victim_spte->file, victim_spte->kpage, victim_spte->read_bytes);
+            pagedir_clear_page (victim->owner->pagedir, victim_spte->upage);
         }
         /* Page is dirty and originated from file, not mmap file: Swap. */
         else if (!victim_spte->is_mmap && pagedir_is_dirty (victim->owner->pagedir, victim->upage)) {
             swap_index = alloc_swap_slot (victim->kpage);
             victim_spte->status = 2;
             victim_spte->swap_index = swap_index;
-            pagedir_clear_page (t->pagedir, victim_spte->upage);
+            pagedir_clear_page (victim->owner->pagedir, victim_spte->upage);
         }
         /* Page is not dirty and vaddr is in the stack area: Swap. */
         else if (!pagedir_is_dirty (victim->owner->pagedir, victim->upage) && PHYS_BASE - 0x800000 <= victim->upage) {
             swap_index = alloc_swap_slot (victim->kpage);
             victim_spte->status = 2;
             victim_spte->swap_index = swap_index;
-            pagedir_clear_page (t->pagedir, victim_spte->upage);
+            pagedir_clear_page (victim->owner->pagedir, victim_spte->upage);
         }
         /* Ignore. */
         else {
             victim_spte->status = 0;
-            pagedir_clear_page (t->pagedir, victim_spte->upage);
+            pagedir_clear_page (victim->owner->pagedir, victim_spte->upage);
         }
 
+        memset (victim->kpage, 0, PGSIZE);
         free (fte);
         fte = victim;
     }
@@ -111,11 +121,13 @@ void free_frame_entry (void* kpage) {
     struct list_elem* e;
 
     lock_acquire (&frame_table_lock);
-    for(e = list_head (&frame_table); e != list_end (&frame_table); e = list_next(e)) {
+    for(e = list_begin (&frame_table); e != list_end (&frame_table); e = list_next(e)) {
         target_fte = list_entry (e, struct frame_table_entry, elem);
         if (target_fte->kpage == kpage) {
             if (clock_pointer == target_fte) {
+                lock_acquire (&clock_pointer_lock);
                 clock_pointer = NULL;
+                lock_release (&clock_pointer_lock);
             }
             list_remove (e);
             free (target_fte);
@@ -129,11 +141,12 @@ void free_frame_entry (void* kpage) {
 
 /* Select victim based on clock algorithm. */
 static struct frame_table_entry* get_victim () {
-    struct thread* t;
     struct frame_table_entry* victim;
+    
+    lock_acquire (&clock_pointer_lock);
 
     if (!clock_pointer) {
-        clock_pointer = list_entry (list_head (&frame_table), struct frame_table_entry, elem);
+        clock_pointer = list_entry (list_begin (&frame_table), struct frame_table_entry, elem);
     }
 
     while (1) {
@@ -143,7 +156,7 @@ static struct frame_table_entry* get_victim () {
         else {
             victim = clock_pointer;
             if (list_next (&clock_pointer->elem) == list_tail (&frame_table)) {
-                clock_pointer = list_entry (list_head (&frame_table), struct frame_table_entry, elem);
+                clock_pointer = list_entry (list_begin (&frame_table), struct frame_table_entry, elem);
             }
             else {
                 clock_pointer = list_entry (list_next (&clock_pointer->elem), struct frame_table_entry, elem);
@@ -152,12 +165,14 @@ static struct frame_table_entry* get_victim () {
         }
 
         if (list_next (&clock_pointer->elem) == list_tail (&frame_table)) {
-            clock_pointer = list_entry (list_head (&frame_table), struct frame_table_entry, elem);
+            clock_pointer = list_entry (list_begin (&frame_table), struct frame_table_entry, elem);
         }
         else {
             clock_pointer = list_entry (list_next (&clock_pointer->elem), struct frame_table_entry, elem);
         }
     }
+
+    lock_release (&clock_pointer_lock);
 
     return victim;
 }

@@ -2,7 +2,6 @@
 #include "threads/malloc.h"
 #include "threads/palloc.h"
 #include "threads/synch.h"
-#include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/pagedir.h"
 #include "vm/page.h"
@@ -31,9 +30,8 @@ void spt_init (struct hash* supplemental_page_table, struct lock* supplemental_p
     lock_init (supplemental_page_table_lock);
 }
 
-bool insert_unmapped_spte (struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable, int status, bool is_mmap) {
+bool insert_unmapped_spte (struct thread* t, struct file* file, off_t ofs, void* upage, void* kpage, uint32_t read_bytes, uint32_t zero_bytes, bool writable, int status, bool is_mmap) {
     struct supplemental_page_table_entry* spte;
-    struct thread* t = thread_current ();
 
     spte = malloc (sizeof (struct supplemental_page_table_entry));
 
@@ -122,7 +120,7 @@ void grow_stack (void* fault_addr) {
 
     success = pagedir_set_page (t->pagedir, pg_round_down (fault_addr), frame, true);
     if (success) {
-        insert_unmapped_spte (NULL, 0, pg_round_down (fault_addr), frame, 0, 0, true, 1, false);
+        insert_unmapped_spte (t, NULL, 0, pg_round_down (fault_addr), frame, 0, 0, true, 1, false);
         return;
     }
     else {
@@ -130,10 +128,9 @@ void grow_stack (void* fault_addr) {
     }
 }
 
-struct supplemental_page_table_entry* find_spte (void* vaddr) {
+struct supplemental_page_table_entry* find_spte (struct thread* t, void* vaddr) {
     struct supplemental_page_table_entry* spte, hash_finder;
     struct hash_elem* found_elem;
-    struct thread* t = thread_current ();
 
     hash_finder.upage = vaddr;
     found_elem = hash_find (&t->supplemental_page_table, &hash_finder.elem);

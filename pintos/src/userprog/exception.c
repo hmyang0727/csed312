@@ -163,7 +163,7 @@ page_fault(struct intr_frame *f)
     }
 
     lock_acquire (&t->supplemental_page_table_lock);
-    spte = find_spte (pg_round_down (fault_addr));
+    spte = find_spte (t, pg_round_down (fault_addr));
     lock_release (&t->supplemental_page_table_lock);
 
     if (!spte) {
