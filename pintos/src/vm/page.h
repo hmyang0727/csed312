@@ -43,4 +43,6 @@ void grow_stack (void* fault_addr);
 /* Find supplemental page table entry using virtual address. */
 struct supplemental_page_table_entry* find_spte (struct thread*, void*);
 
+void destroy_spt (struct hash*);
+
 #endif

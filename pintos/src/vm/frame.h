@@ -6,5 +6,6 @@
 void frame_init ();
 void* alloc_frame_entry (enum palloc_flags, uint8_t*);
 void free_frame_entry (void*);
+void free_frame (struct thread*);
 
 #endif

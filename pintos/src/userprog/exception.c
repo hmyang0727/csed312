@@ -162,9 +162,7 @@ page_fault(struct intr_frame *f)
         syscall_exit (-1);
     }
 
-    lock_acquire (&t->supplemental_page_table_lock);
     spte = find_spte (t, pg_round_down (fault_addr));
-    lock_release (&t->supplemental_page_table_lock);
 
     if (!spte) {
         /* stack growth */

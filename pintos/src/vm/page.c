@@ -71,12 +71,19 @@ bool load_file_page (struct supplemental_page_table_entry* spte) {
 
         /* Get a page of memory. */
         kpage = alloc_frame_entry(PAL_USER, spte->upage);
-        if (kpage == NULL)
+        if (kpage == NULL) {
+            if (spte->upage == 0x81b5000) {
+                printf("what...?\n\n");
+            }
             return false;
+        }
 
         /* Load this page. */
         if (file_read(spte->file, kpage, spte->read_bytes) != (int)spte->read_bytes)
         {
+            if (spte->upage == 0x81b5000) {
+                printf("what...?\n\n");
+            }
             free_frame_entry (kpage);
             return false;
         }
@@ -85,6 +92,9 @@ bool load_file_page (struct supplemental_page_table_entry* spte) {
         /* Add the page to the process's address space. */
         if (!pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable))
         {
+            if (spte->upage == 0x81b5000) {
+                printf("what...?\n\n");
+            }
             free_frame_entry (kpage);
             return false;
         }
@@ -132,9 +142,29 @@ struct supplemental_page_table_entry* find_spte (struct thread* t, void* vaddr) 
     struct supplemental_page_table_entry* spte, hash_finder;
     struct hash_elem* found_elem;
 
+    lock_acquire (&t->supplemental_page_table_lock);
+
     hash_finder.upage = vaddr;
     found_elem = hash_find (&t->supplemental_page_table, &hash_finder.elem);
     spte = found_elem ? hash_entry (found_elem, struct supplemental_page_table_entry, elem) : NULL;
 
+    lock_release (&t->supplemental_page_table_lock);
+
     return spte;
+}
+
+void hash_destroy_func (struct hash_elem* e, void* aux) {
+    struct supplemental_page_table_entry* spte;
+
+    spte = hash_entry (e, struct supplemental_page_table_entry, elem);
+
+    if (spte->status == 2) {
+        destroy_swap_slot (spte->swap_index);
+    }
+
+    free (spte);
+}
+
+void destroy_spt (struct hash* spt) {
+    hash_destroy (spt, &hash_destroy_func);
 }

@@ -189,11 +189,14 @@ void process_exit(void)
     {
         mte = list_entry(e, struct mmap_table_entry, elem);
         syscall_munmap (mte->mapid);
+        list_remove (e);
     }
+
+    destroy_spt (&cur->supplemental_page_table);
 
     /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
-    pd = thread_get_pagedir();
+    pd = cur->pagedir;
     if (pd != NULL)
     {
         /* Correct ordering here is crucial.  We must set
@@ -203,7 +206,7 @@ void process_exit(void)
          directory before destroying the process's page
          directory, or our active page directory will be one
          that's been freed (and cleared). */
-        thread_set_pagedir(NULL);
+        cur->pagedir = NULL;
         pagedir_activate(NULL);
         pagedir_destroy(pd);
     }

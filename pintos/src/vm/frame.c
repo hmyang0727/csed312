@@ -71,6 +71,7 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
         if (victim_spte->is_mmap && pagedir_is_dirty (victim->owner->pagedir, victim->upage)) {
             file_seek (victim_spte->file, victim_spte->ofs);
             file_write (victim_spte->file, victim_spte->kpage, victim_spte->read_bytes);
+            victim_spte->status = 0;
             pagedir_clear_page (victim->owner->pagedir, victim_spte->upage);
         }
         /* Page is dirty and originated from file, not mmap file: Swap. */
@@ -110,6 +111,7 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
         lock_release (&frame_table_lock);
     }
     else {
+        frame = fte->kpage;
         lock_release (&frame_table_lock);
     }
 
@@ -175,4 +177,26 @@ static struct frame_table_entry* get_victim () {
     lock_release (&clock_pointer_lock);
 
     return victim;
+}
+
+void free_frame (struct thread* t) {
+    struct list_elem* e;
+    struct frame_table_entry* fte;
+
+    lock_acquire (&frame_table_lock);
+
+    for (e = list_begin (&frame_table); e != list_end (&frame_table); e = list_next (e)) {
+        fte = list_entry (e, struct frame_table_entry, elem);
+        if (fte != NULL && fte->owner == t) {
+            if (clock_pointer == fte) {
+                lock_acquire (&clock_pointer_lock);
+                clock_pointer = NULL;
+                lock_release (&clock_pointer_lock);
+            }
+            list_remove (e);
+            // free (fte);
+        }
+    }
+
+    lock_release (&frame_table_lock);
 }
