@@ -72,18 +72,12 @@ bool load_file_page (struct supplemental_page_table_entry* spte) {
         /* Get a page of memory. */
         kpage = alloc_frame_entry(PAL_USER, spte->upage);
         if (kpage == NULL) {
-            if (spte->upage == 0x81b5000) {
-                printf("what...?\n\n");
-            }
             return false;
         }
 
         /* Load this page. */
         if (file_read(spte->file, kpage, spte->read_bytes) != (int)spte->read_bytes)
         {
-            if (spte->upage == 0x81b5000) {
-                printf("what...?\n\n");
-            }
             free_frame_entry (kpage);
             return false;
         }
@@ -92,9 +86,6 @@ bool load_file_page (struct supplemental_page_table_entry* spte) {
         /* Add the page to the process's address space. */
         if (!pagedir_set_page(t->pagedir, spte->upage, kpage, spte->writable))
         {
-            if (spte->upage == 0x81b5000) {
-                printf("what...?\n\n");
-            }
             free_frame_entry (kpage);
             return false;
         }

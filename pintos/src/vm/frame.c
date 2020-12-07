@@ -75,7 +75,7 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
             pagedir_clear_page (victim->owner->pagedir, victim_spte->upage);
         }
         /* Page is dirty and originated from file, not mmap file: Swap. */
-        else if (!victim_spte->is_mmap && pagedir_is_dirty (victim->owner->pagedir, victim->upage)) {
+        else if (!victim_spte->is_mmap) {
             swap_index = alloc_swap_slot (victim->kpage);
             victim_spte->status = 2;
             victim_spte->swap_index = swap_index;
@@ -177,26 +177,4 @@ static struct frame_table_entry* get_victim () {
     lock_release (&clock_pointer_lock);
 
     return victim;
-}
-
-void free_frame (struct thread* t) {
-    struct list_elem* e;
-    struct frame_table_entry* fte;
-
-    lock_acquire (&frame_table_lock);
-
-    for (e = list_begin (&frame_table); e != list_end (&frame_table); e = list_next (e)) {
-        fte = list_entry (e, struct frame_table_entry, elem);
-        if (fte != NULL && fte->owner == t) {
-            if (clock_pointer == fte) {
-                lock_acquire (&clock_pointer_lock);
-                clock_pointer = NULL;
-                lock_release (&clock_pointer_lock);
-            }
-            list_remove (e);
-            // free (fte);
-        }
-    }
-
-    lock_release (&frame_table_lock);
 }
