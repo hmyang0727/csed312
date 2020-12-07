@@ -51,8 +51,6 @@ size_t alloc_swap_slot (void* kpage) {
 void free_swap_slot (size_t swap_index, void* kpage) {
     int position;
 
-    printf ("free!\n\n");
-
     lock_acquire (&swap_lock);
 
     for (position = 0; position < SECTORS_PER_PAGE; position++) {
