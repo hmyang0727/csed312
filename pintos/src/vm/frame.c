@@ -6,6 +6,7 @@
 #include "threads/vaddr.h"
 #include "threads/synch.h"
 #include "userprog/pagedir.h"
+#include "userprog/process.h"
 #include "vm/frame.h"
 #include "vm/swap.h"
 
@@ -74,7 +75,7 @@ void* alloc_frame_entry (enum palloc_flags flags, uint8_t* upage) {
             victim_spte->status = 0;
             pagedir_clear_page (victim->owner->pagedir, victim_spte->upage);
         }
-        /* Page is dirty and originated from file, not mmap file: Swap. */
+        /* Page is originated from file, not mmap file: Swap. */
         else if (!victim_spte->is_mmap) {
             swap_index = alloc_swap_slot (victim->kpage);
             victim_spte->status = 2;
@@ -123,7 +124,7 @@ void free_frame_entry (void* kpage) {
     struct list_elem* e;
 
     lock_acquire (&frame_table_lock);
-    for(e = list_begin (&frame_table); e != list_end (&frame_table); e = list_next(e)) {
+    for(e = list_begin (&frame_table); e != list_end (&frame_table); e = list_next (e)) {
         target_fte = list_entry (e, struct frame_table_entry, elem);
         if (target_fte->kpage == kpage) {
             if (clock_pointer == target_fte) {
@@ -177,4 +178,29 @@ static struct frame_table_entry* get_victim () {
     lock_release (&clock_pointer_lock);
 
     return victim;
+}
+
+void destory_frame_entry (struct thread* t) {
+    struct list_elem* e;
+    struct frame_table_entry* fte;
+
+    lock_acquire (&frame_table_lock);
+
+    for (e = list_begin (&frame_table); e != list_end (&frame_table); ) {
+        fte = list_entry (e, struct frame_table_entry, elem);
+        if (fte->owner == t) {
+            if (clock_pointer == fte) {
+                lock_acquire (&clock_pointer_lock);
+                clock_pointer = NULL;
+                lock_release (&clock_pointer_lock);
+            }
+            e = list_remove (e);
+            free (fte);
+        }
+        else {
+            e = list_next (e);
+        }
+    }
+
+    lock_release (&frame_table_lock);
 }

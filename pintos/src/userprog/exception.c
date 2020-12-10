@@ -188,9 +188,6 @@ page_fault(struct intr_frame *f)
         syscall_exit (-1);
     }
 
-    /* Use fault_addr to search spt. */
-    /* Then call load_page function in the page.c. */
-
     /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
      which fault_addr refers. */

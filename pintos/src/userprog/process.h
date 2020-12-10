@@ -7,6 +7,8 @@
 
 #define MAX_ARGS 128
 
+struct lock vm_destroy_lock;
+
 /* A process control block. */
 struct process
 {

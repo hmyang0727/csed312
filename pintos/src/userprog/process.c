@@ -175,9 +175,9 @@ void process_exit(void)
         process_remove_child(list_entry(e, struct process, childelem));
     for (i = 2; i < max_fd; i++)
         syscall_close(i);
-    sema_up(&pcb->exit_sema);
     if (pcb && !pcb->parent)
         palloc_free_page(pcb);
+    sema_up(&pcb->exit_sema);
 
     /* Close the running file. */
     lock_acquire(filesys_lock);
@@ -185,13 +185,14 @@ void process_exit(void)
     lock_release(filesys_lock);
 
     /* Call munmap systel call. */
-    for (e = list_begin(&cur->mmap_table); e != list_end(&cur->mmap_table); e = list_next(e))
+    for (e = list_begin(&cur->mmap_table); e != list_end(&cur->mmap_table); )
     {
         mte = list_entry(e, struct mmap_table_entry, elem);
         syscall_munmap (mte->mapid);
-        list_remove (e);
+        e = list_remove (e);
     }
 
+    destory_frame_entry (cur);
     destroy_spt (&cur->supplemental_page_table);
 
     /* Destroy the current process's page directory and switch back

@@ -599,7 +599,9 @@ struct mmap_table_entry* find_mmap_table_entry(struct thread* t, mapid_t mapping
     for (e = list_begin(&t->mmap_table); e != list_end(&t->mmap_table); e = list_next(e))
     {
         mte = list_entry(e, struct mmap_table_entry, elem);
-        if(mte->mapid == mapping) { return mte; }
+        if(mte->mapid == mapping) { 
+            return mte;
+        }
     }
 
     return NULL;

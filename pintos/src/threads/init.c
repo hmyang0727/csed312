@@ -116,6 +116,7 @@ int main(void)
 #ifdef USERPROG
     exception_init();
     syscall_init();
+    lock_init (&vm_destroy_lock);
 #endif
 
     /* Start thread scheduler and enable interrupts. */
